@@ -233,7 +233,7 @@ class Earl:
             for chan in self.who:
                 for nick in self.who[chan]:
                     if words[1] == nick:
-                        cpring(YELLOW, "+o " + nick + "\n")
+                        cprint(YELLOW, "+o " + nick + "\n")
                         self.irc.send('MODE '+ chan +' +o ' + nick + '\r\n')
                         self.ops[ chan ].append(nick)
             return True
