@@ -181,7 +181,7 @@ class Earl:
     def Quit(self):
         self.mc.saveDatabase()
         self.logfile.close()
-        seendb = open('seendb..pkl', 'wb')
+        seendb = open('seendb.pkl', 'wb')
         # Pickle dictionary using protocol 0.
         pickle.dump(self.seen, seendb)
         seendb.close()
