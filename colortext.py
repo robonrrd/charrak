@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 import sys
+import time
 
-WARNING = '\033[93m'
-FAIL = '\033[91m'
 ENDC = '\033[0m'
 
 PLAIN = "\033[0m"
@@ -40,6 +39,10 @@ BG_PURPLE = "\033[105m"
 BG_CYAN = "\033[106m"
 BG_LGRAY = "\033[107m"
 
+WARNING = YELLOW
+FAIL = RED
+
 def cprint(color, text):
+    sys.stdout.write(PLAIN + time.strftime("%H:%M:%S") + ": " + ENDC)
     sys.stdout.write(color + text + ENDC)
     sys.stdout.flush()
