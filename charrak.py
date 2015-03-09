@@ -1,13 +1,17 @@
 #!/usr/bin/env python
+import errno
+import httplib
 import pickle
+import random
+import re
 import sys
 import socket
 import string
 import signal
-import re
-import httplib
-import random
 import time
+
+from threading import Timer, RLock
+
 import markov
 from colortext import *
 
@@ -34,6 +38,14 @@ class Earl:
 
         # Logging file settings
         self.LOGFILE_MAX_LINES = 1000
+
+        # Regular db saves
+        self.SAVE_TIME=300 # Save every 5 minutes
+        self.save_timer = Timer(self.SAVE_TIME, self.saveDatabases)
+
+        # Set up a lock for the seen db
+        self.seendb_lock = RLock()
+        self.SEENDB = 'seendb.pkl'
 
         # signal handling
         signal.signal(signal.SIGINT, self.signalHandler)
@@ -134,7 +146,7 @@ class Earl:
 
     # Join the IRC network
     def joinIrc(self):
-        self.irc = socket.socket( )
+        self.irc = socket.socket()
         self.irc.connect((self.HOST, self.PORT))
         self.irc.send("NICK %s\r\n" % self.NICK)
         self.irc.send("USER %s %s bla :%s\r\n" % (self.IDENT, self.HOST, self.REALNAME))
@@ -167,25 +179,35 @@ class Earl:
         self.logfilecount = 0
 
     def loadSeenDB(self):
-        try:
-            seendb = open('seendb.pkl', 'rb')
-        except IOError:
-            cprint(RED, 'Unable to open \'seendb.pkl\'\n')
-            return
-        self.seen = pickle.load(pkl_file)
-        seendb.close()
+        with self.seendb_lock:
+            try:
+                with open(self.SEENDB, 'rb') as seendb:
+                    self.seen = pickle.load(seendb)
+            except IOError:
+                cprint(RED, "Unable to open '%s' for reading\n" % self.SEENDB)
+
+    def saveSeenDB(self):
+        with self.seendb_lock:
+            try:
+                with open(self.SEENDB, 'wb') as seendb:
+                    pickle.dump(self.seen, seendb)
+            except IOError:
+                cprint(RED, "Unable to open 'seendb.pkl' for writing\n")
 
     def signalHandler(self, signal, frame):
-        self.Quit()
+        self.quit()
 
-    def Quit(self):
-        self.mc.saveDatabase()
+    def quit(self):
+        self.save_timer.cancel()
+        self.saveDatabases()
         self.logfile.close()
-        seendb = open('seendb.pkl', 'wb')
-        # Pickle dictionary using protocol 0.
-        pickle.dump(self.seen, seendb)
-        seendb.close()
-        sys.exit()
+        sys.exit(0)
+
+    def saveDatabases(self):
+      cprint(GREEN, 'Saving databases.. ')
+      self.mc.saveDatabase()
+      self.saveSeenDB()
+      cprint(GREEN, 'DONE\n')
 
     def elapsedTime(self, ss):
         reply = ""
@@ -490,9 +512,15 @@ class Earl:
         self.loadSeenDB()
         self.joinIrc()
 
+        self.save_timer.start()
+
         # Loop forever, parsing input text
         while 1:
-            self.readbuffer = self.readbuffer + self.irc.recv(1024)
+            try:
+                self.readbuffer = self.readbuffer + self.irc.recv(1024)
+            except socket.error as (code, msg):
+                if code != errno.EINTR:
+                    raise
             temp = string.split(self.readbuffer, "\n")
             self.readbuffer = temp.pop( )
 
