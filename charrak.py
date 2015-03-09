@@ -30,7 +30,7 @@ class Earl:
         self.seen = {} # lists of who said what when
 
         # Markov chain settings
-        self.P_REPLY = 0.1
+        self.p_reply = 0.1
 
         # Logging file settings
         self.LOGFILE_MAX_LINES = 1000
@@ -344,25 +344,25 @@ class Earl:
             return
 
         # set internal variables
-        elif len(words) == 3 and  words[0] == "set":
+        elif len(words) == 3 and words[0] == "set":
             # set reply probability
             if words[1] == "p_reply":
                 cprint(CYAN, msg["speaker"] + " ")
                 cprint(PLAIN, time.strftime("%H:%M:%S") + " : ")
                 cprint(RED, "SET P_REPLY " + words[2] + "\n")
-                self.P_REPLY = float(words[2])
+                self.p_reply = float(words[2])
             else:
                 self.dunno()
             return
 
-        elif len(words) == 2 and  words[0] == "get":
+        elif len(words) == 2 and words[0] == "get":
             # set reply probability
             if words[1] == "p_reply":
                 cprint(CYAN, msg["speaker"] + " ")
                 cprint(PLAIN, time.strftime("%H:%M:%S") + " : ")
-                cprint(RED, "GET P_REPLY " + str(self.P_REPLY) + "\n")
+                cprint(RED, "GET P_REPLY " + str(self.p_reply) + "\n")
 
-                self.irc.send('PRIVMSG '+ msg["speaker"] +' :' + str(self.P_REPLY) + '\r\n')
+                self.irc.send('PRIVMSG '+ msg["speaker"] +' :' + str(self.p_reply) + '\r\n')
                 return
 
         # leave a channel
@@ -446,7 +446,7 @@ class Earl:
             "privmsg"       : m.group(4) ,                 # should be PRIVMSG
             "speaking_to"   : m.group(5) ,                 # could be self.NICK or a channel
             "text"          : text ,                       # what's said
-            "p_reply"       : self.P_REPLY                 # probably of responding
+            "p_reply"       : self.p_reply                 # probably of responding
             }
 
         if msg["privmsg"] != 'PRIVMSG':
