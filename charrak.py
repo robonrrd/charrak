@@ -11,7 +11,7 @@ import time
 import markov
 from colortext import *
 
-class Earl:
+class Bot:
     def __init__(self):
         # IRC settings
         self.irc = None
@@ -518,5 +518,6 @@ class Earl:
 
 #####
 
-earl = Earl()
-earl.main()
+if __name__ == "__main__":
+    bot = Bot()
+    bot.main()
