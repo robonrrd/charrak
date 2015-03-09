@@ -189,37 +189,40 @@ class Earl:
 
     def elapsedTime(self, ss):
         reply = ""
+        startss = ss
         if ss > 31557600:
             years = ss // 31557600
-            reply = reply + str(years) + " years "
+            reply = reply + ("%g years " % years)
             ss = ss - years*31557600
             
         if ss > 2678400: # 31 days
             months = ss // 2678400
-            reply = reply + str(months) + " months "
+            reply = reply + ("%g months " % months)
             ss = ss - months*2678400
             
         if ss > 604800:
             weeks = ss // 604800
-            reply = reply + str(weeks) + " weeks "
+            reply = reply + ("%g weeks " % weeks)
             ss = ss - weeks*604800
 
         if ss > 86400:
             days = ss // 86400
-            reply = reply + str(days) + " days "
+            reply = reply + ("%g days " % days)
             ss = ss - days*86400
 
         if ss > 3600:
             hours = ss // 3600
-            reply = reply + str(hours) + " hours "
+            reply = reply + ("%g hours " % hours)
             ss = ss - hours*3600
 
         if ss > 60:
             minutes = ss // 60
-            reply = reply + str(minutes) + " minutes "
+            reply = reply + ("%g minutes " % minutes)
             ss = ss - minutes*60
 
-        reply = reply + "and " + str(ss) + " seconds ago"
+        if ss != startss:
+            reply = reply + "and "
+        reply = reply + ("%.3f seconds ago" % ss)
         return reply
 
 
@@ -246,7 +249,7 @@ class Earl:
                 last_seen = self.seen[nick][1] # in seconds since epoch
                 since = self.elapsedTime( time.time() - last_seen )
                 seen_msg = seen_msg + since
-                seen_msg = seen_msg + " saying " + self.seen[nick][2]
+                seen_msg = seen_msg + " saying '" + self.seen[nick][2] + "'"
                 self.privmsg( msg["speaking_to"], seen_msg )
             return True
 
