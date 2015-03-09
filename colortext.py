@@ -40,9 +40,4 @@ BG_CYAN = "\033[106m"
 BG_LGRAY = "\033[107m"
 
 WARNING = YELLOW
-FAIL = RED
-
-def cprint(color, text):
-    sys.stdout.write(PLAIN + time.strftime("%H:%M:%S") + ": " + ENDC)
-    sys.stdout.write(color + text + ENDC)
-    sys.stdout.flush()
+ERROR = RED
