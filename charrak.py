@@ -38,6 +38,7 @@ class Bot:
         self.REALNAME = args.realname
         self.OWNERS = args.owners.split(",")
         self.CHANNELINIT = args.channels.split(",")
+        self.IDENT='pybot'
         self.readbuffer='' #Here we store all the messages from server
 
         # Caches of IRC status
@@ -53,6 +54,7 @@ class Bot:
 
         # Regular db saves
         self.SAVE_TIME = args.save_period
+        self.save_timer = None
 
         # Set up a lock for the seen db
         self.seendb_lock = RLock()
@@ -212,7 +214,8 @@ class Bot:
         self.quit()
 
     def quit(self):
-        self.save_timer.cancel()
+        if self.save_timer:
+            self.save_timer.cancel()
         self.saveDatabases()
         self.logfile.close()
         sys.exit(0)
