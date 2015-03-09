@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import argparse
 import errno
 import httplib
 import pickle
@@ -15,17 +16,28 @@ from threading import Timer, RLock
 import markov
 from colortext import *
 
+parser = argparse.ArgumentParser(description='A snarky IRC bot.')
+parser.add_argument("--host", help="The server to connect to", default="irc.perl.org")
+parser.add_argument("--port", type=int, help="The connection port", default=6667)
+parser.add_argument("--nick", help="The bot's nickname", default="charrak")
+parser.add_argument("--realname", help="The bot's real name", default="charrak the kobold")
+parser.add_argument("--owners", help="The list of owner nicks", default="nrrd, nrrd_, mrdo")
+parser.add_argument("--channels", help="The list of channels to join", default="#haplessvictims")
+parser.add_argument("--save_period", help="How often (in seconds) to save databases", default=300)
+parser.add_argument("--seendb", help="Path to seendb", default="./seendb.pkl")
+parser.add_argument("--markovdb", help="Path to markovdb", default="./charrakdb")
+
+
 class Bot:
-    def __init__(self):
+    def __init__(self, args):
         # IRC settings
         self.irc = None
-        self.HOST='irc.perl.org' # The server we want to connect to
-        self.PORT=6667           # The connection port (usually 6667)
-        self.NICK='charrak'      # The bot's nickname
-        self.REALNAME='charrak the kobold'
-        self.IDENT='pybot'
-        self.OWNERS=[ "nrrd", "nrrd-", "nrrd_" ] # The bot owners
-        self.CHANNELINIT='#haplessvictims' #The default channel for the bot
+        self.HOST = args.host
+        self.PORT = args.port
+        self.NICK = args.nick
+        self.REALNAME = args.realname
+        self.OWNERS = args.owners.split(",")
+        self.CHANNELINIT = args.channels.split(",")
         self.readbuffer='' #Here we store all the messages from server
 
         # Caches of IRC status
@@ -40,11 +52,13 @@ class Bot:
         self.LOGFILE_MAX_LINES = 1000
 
         # Regular db saves
-        self.SAVE_TIME=300 # Save every 5 minutes
+        self.SAVE_TIME = args.save_period
 
         # Set up a lock for the seen db
         self.seendb_lock = RLock()
-        self.SEENDB = 'seendb.pkl'
+        self.SEENDB = args.seendb
+
+        self.MARKOVDB = args.markovdb
 
         # signal handling
         signal.signal(signal.SIGINT, self.signalHandler)
@@ -155,7 +169,8 @@ class Bot:
         self.eatLinesUntilText('End of /MOTD command')
 
         # Join the initial channel
-        self.joinChannel( self.CHANNELINIT )
+        for c in self.CHANNELINIT:
+          self.joinChannel(c)
 
 
     def joinChannel(self, channel):
@@ -169,7 +184,7 @@ class Bot:
 
     def initMarkovChain(self):
         # Open our Markov chain database        
-        self.mc = markov.MarkovChain("./charrakdb")
+        self.mc = markov.MarkovChain(self.MARKOVDB)
 
     def initLogging(self):
         # Open a logging file
@@ -552,5 +567,5 @@ class Bot:
 #####
 
 if __name__ == "__main__":
-    bot = Bot()
+    bot = Bot(parser.parse_args())
     bot.main()
