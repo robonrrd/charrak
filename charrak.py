@@ -41,7 +41,6 @@ class Earl:
 
         # Regular db saves
         self.SAVE_TIME=300 # Save every 5 minutes
-        self.save_timer = Timer(self.SAVE_TIME, self.saveDatabases)
 
         # Set up a lock for the seen db
         self.seendb_lock = RLock()
@@ -208,6 +207,11 @@ class Earl:
       self.mc.saveDatabase()
       self.saveSeenDB()
       cprint(GREEN, 'DONE\n')
+
+    def handleSaveDatabasesTimer(self):
+        self.saveDatabases()
+        self.save_timer = Timer(self.SAVE_TIME, self.handleSaveDatabasesTimer)
+        self.save_timer.start()
 
     def elapsedTime(self, ss):
         reply = ""
@@ -512,6 +516,7 @@ class Earl:
         self.loadSeenDB()
         self.joinIrc()
 
+        self.save_timer = Timer(self.SAVE_TIME, self.handleSaveDatabasesTimer)
         self.save_timer.start()
 
         # Loop forever, parsing input text
