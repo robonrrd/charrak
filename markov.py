@@ -1,9 +1,14 @@
 #!/usr/bin/env python
-import os
-import sys
 import math
+import os
 import random
 import re
+import sys
+
+from threading import RLock
+
+from colortext import *
+
 try:
     # use cPickle when using python2 for better performance
     import cPickle as pickle
@@ -16,21 +21,21 @@ class MarkovChain:
         self.cache = { ("","") : [] }
         self.total = { ("","") : 1 }
 
+        self.dbFile_lock = RLock()
+
         self.dbFilePath = dbFilePath
         if not dbFilePath:
             self.dbFilePath = os.path.join(os.path.dirname(__file__), "markovdb")
-        try:
-            with open(self.dbFilePath, 'rb') as dbfile:
-                db = pickle.load(dbfile)
-                self.cache = db[0]
-                self.total = db[1]
-                dbfile.close()
-
-        except IOError:
-            print('Database file not found, using empty database')
-        except ValueError:
-            print('Database corrupt or unreadable, using empty database')
-
+        with self.dbFile_lock:
+            try:
+                with open(self.dbFilePath, 'rb') as dbfile:
+                    db = pickle.load(dbfile)
+                    self.cache = db[0]
+                    self.total = db[1]
+            except IOError:
+                cprint(YELLOW, "Unable to read database file '%s': Using empty database\n" % self.dbFilePath)
+            except ValueError:
+                cprint(YELLOW, "Database '%s' corrupt or unreadable: Using empty database\n" % self.dbFilePath)
 
     def parseLineIntoSentences(self, line):
         line = re.sub('[\',@#<>!@#^&*]', '', line.lower())
@@ -75,15 +80,15 @@ class MarkovChain:
                     self.total[ bg[ii] ] = self.total[ bg[ii] ] + 1
 
     def saveDatabase(self):
-        db = [ self.cache, self.total ]
-        try:
-            with open(self.dbFilePath, 'wb') as dbfile:
-                pickle.dump(db, dbfile)
-            # It looks like db was written successfully
-            return True
-        except IOError:
-            sys.stderr.write('Database file could not be written')
-            return False
+        with self.dbFile_lock:
+            db = [ self.cache, self.total ]
+            try:
+                with open(self.dbFilePath, 'wb') as dbfile:
+                    pickle.dump(db, dbfile)
+                return True
+            except IOError:
+                cprint(RED, "Failed to write Database file to '%s'\n" % self.dbFilePath)
+                return False
 
     def respond(self, line, response):
         if len(line) != 2:
