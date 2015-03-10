@@ -269,7 +269,7 @@ class Bot:
 
         if words[0] == "seen" and len(words) == 2:
             nick = words[1]
-            if self.seen.has_key(nick):
+            if self.seen.has_key(string.tolower(nick)):
                 seen_msg = nick + " was last seen in "
                 seen_msg = seen_msg + self.seen[nick][0] + " " 
                 last_seen = self.seen[nick][1] # in seconds since epoch
@@ -482,7 +482,7 @@ class Bot:
             return
       
         if msg["speaking_to"][0] == "#":
-            self.seen[ msg["speaker"] ] = [ msg["speaking_to"], time.time(), msg["text"] ]
+            self.seen[ string.tolower(msg["speaker"]) ] = [ msg["speaking_to"], time.time(), msg["text"] ]
  
         self.determineWhoIsBeingAddressed( msg )
 
