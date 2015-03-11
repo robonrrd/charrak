@@ -277,14 +277,15 @@ class Bot:
 
         if words[0] == "seen" and len(words) == 2:
             nick = words[1]
+            key = nick.lower()
             seen_msg = ""
-            if self.seen.has_key(string.tolower(nick)):
+            if self.seen.has_key(key):
                 seen_msg = nick + " was last seen in "
-                seen_msg = seen_msg + self.seen[nick][0] + " " 
-                last_seen = self.seen[nick][1] # in seconds since epoch
+                seen_msg = seen_msg + self.seen[key][0] + " " 
+                last_seen = self.seen[key][1] # in seconds since epoch
                 since = self.elapsedTime( time.time() - last_seen )
                 seen_msg = seen_msg + since
-                seen_msg = seen_msg + " saying '" + self.seen[nick][2] + "'"
+                seen_msg = seen_msg + " saying '" + self.seen[key][2] + "'"
             else:
                 seen_msg = "I haven't seen " + nick + "."
             self.privmsg(msg["speaking_to"], seen_msg)
