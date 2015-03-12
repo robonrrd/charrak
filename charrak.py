@@ -285,7 +285,8 @@ class Bot:
                 last_seen = self.seen[key][1] # in seconds since epoch
                 since = self.elapsedTime( time.time() - last_seen )
                 seen_msg = seen_msg + since
-                seen_msg = seen_msg + " saying '" + self.seen[key][2] + "'"
+                message = string.strip(self.seen[key][2])
+                seen_msg = seen_msg + " saying '" + message + "'"
             else:
                 seen_msg = "I haven't seen " + nick + "."
             self.privmsg(msg["speaking_to"], seen_msg)
