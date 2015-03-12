@@ -38,8 +38,8 @@ class Bot:
         self.PORT = args.port
         self.NICK = args.nick
         self.REALNAME = args.realname
-        self.OWNERS = args.owners.split(",")
-        self.CHANNELINIT = args.channels.split(",")
+        self.OWNERS = [string.strip(owner) for owner in args.owners.split(",")]
+        self.CHANNELINIT = [string.strip(channel) for channel in args.channels.split(",")]
         self.IDENT='pybot'
         self.readbuffer='' #Here we store all the messages from server
 
@@ -371,7 +371,7 @@ class Bot:
         # constructed private messages
         words = msg["text"].split()
 
-        logging.info("Received private message: '" + msg + "'")
+        logging.info("Received private message: '" + string.strip(msg["text"]) + "'")
 
         # simple testing
         if len(words) == 1 and words[0] == 'ping':
@@ -420,7 +420,7 @@ class Bot:
         # quit
         elif len(words) == 1 and (words[0] == 'quit' or words[0] == 'exit'):
             self.logChannel(msg["speaker"], RED + "QUIT")
-            self.Quit()
+            self.quit()
 
         # if we've hit no special commands, parse this message like it was public
         self.parsePublicMessage(msg)
