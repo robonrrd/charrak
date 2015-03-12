@@ -294,7 +294,7 @@ class Bot:
             # Use a random bigram of the input message as a seed for the Markov chain
             max_index = min(6, len(words)-1)
             index = random.randint(1, max_index)
-            seed = [words[index-1], words[index]]
+            seed = (words[index-1], words[index])
             leading_words = string.join(words[0:index+1])
     
         # If not, and we weren't referenced explicitly in the message, return early.
