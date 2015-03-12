@@ -371,8 +371,11 @@ class Bot:
         # constructed private messages
         words = msg["text"].split()
 
+        logging.info("Received private message: '" + msg + "'")
+
         # simple testing
         if len(words) == 1 and words[0] == 'ping':
+            self.logChannel(msg["speaker"], GREEN + "pong")
             self.irc.send('PRIVMSG '+ msg["speaker"] +' :' + 'pong\r\n')
             return
 
@@ -382,6 +385,7 @@ class Bot:
             if words[1] == "p_reply":
                 self.logChannel(msg["speaker"], GREEN + "SET P_REPLY " + words[2])
                 self.p_reply = float(words[2])
+                self.irc.send('PRIVMSG '+ msg["speaker"] +' :' + str(self.p_reply) + '\r\n')
             else:
                 self.dunno()
             return
@@ -390,7 +394,6 @@ class Bot:
             # set reply probability
             if words[1] == "p_reply":
                 self.logChannel(msg["speaker"], GREEN + "GET P_REPLY " + str(self.p_reply))
-
                 self.irc.send('PRIVMSG '+ msg["speaker"] +' :' + str(self.p_reply) + '\r\n')
                 return
 
