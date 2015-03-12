@@ -306,7 +306,7 @@ class Bot:
 
         # If we have enough words and the random chance is enough, reply based on the message.
         if len(words) >= 2 and random.random() <= msg["p_reply"]:
-            logging.info(GREEN, "Trying to reply to '" + str(words) + "'")
+            logging.info(GREEN + "Trying to reply to '" + str(words) + "'")
             # Use a random bigram of the input message as a seed for the Markov chain
             max_index = min(6, len(words)-1)
             index = random.randint(1, max_index)
