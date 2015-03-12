@@ -97,11 +97,11 @@ class MarkovChain:
         if not bigram:
             bigram = random.sample(self.cache, 1)[0]
             includeBigram = True
-            cprint(BLUE, "Picking " + str(bigram) + " as seed\n")
+            logging.info(BLUE + "Picking " + str(bigram) + " as seed")
 
         # Must be a bigram
         if len(bigram) != 2:
-            cprint(RED, "Invalid bigram " + str(bigram) + " passed as seed\n")
+            logging.error(ERROR + "Invalid bigram " + str(bigram) + " passed as seed")
             return ""
 
         response = [""]
