@@ -90,24 +90,33 @@ class MarkovChain:
                 cprint(RED, "Failed to write Database file to '%s'\n" % self.dbFilePath)
                 return False
 
-    def respond(self, line, response):
-        if len(line) != 2:
+    def respond(self, bigram):
+        includeBigram = False
+        # If no bigram given as a seed, pick a random one.
+        if not bigram:
+            bigram = random.sample(self.cache, 1)[0]
+            includeBigram = True
+            cprint(BLUE, "Picking " + str(bigram) + " as seed\n")
+
+        # Must be a bigram
+        if len(bigram) != 2:
+            cprint(RED, "Invalid bigram " + str(bigram) + " passed as seed\n")
             return ""
 
-        self._respondHelper(line, response)
-        return line[0] + " " + line[1] + " " + response[0]
+        response = [""]
+        self._respondHelper(bigram, response)
+        if includeBigram:
+          response[0] = bigram[0] + " " + bigram[1] + " " + response[0]
+        return response[0]
 
-    def _respondHelper(self, line, response):
-        # create the bigram
-        bg = (line[0], line[1])
-
+    def _respondHelper(self, bigram, response):
         # does it exist in our cache?
-        if self.cache.get( bg ) == None: 
+        if self.cache.get(bigram) == None: 
             # end?
             return
             '''
             #  pick a random bigram?
-            which = random.random()*len(self.cache)
+            which = random.random() * len(self.cache)
             ii = 0
             for k, v in self.cache.iteritems():
                 if ii == which:
@@ -117,8 +126,8 @@ class MarkovChain:
             '''
 
         # pick a random response
-        which = int( math.floor(random.random()*self.total[bg]) + 1)
-        values = self.cache[ bg ]
+        which = int(math.floor(random.random()*self.total[bigram]) + 1)
+        values = self.cache[bigram]
         ii = 0
         for v in values:
             ii = ii + v[0]
@@ -127,6 +136,6 @@ class MarkovChain:
                     response[0] = v[1]
                 else:
                     response[0] = response[0] + " " + v[1]
-                newline = [line[1], v[1]]
-                self._respondHelper( newline, response )
+                newbigram = (bigram[1], v[1])
+                self._respondHelper(newbigram, response)
                 return

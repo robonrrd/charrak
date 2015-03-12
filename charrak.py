@@ -54,7 +54,7 @@ class Bot:
     # Irc communication functions
     def privmsg(self, speaking_to, text):
         cprint(PURPLE, speaking_to)
-        cprint(PLAIN, ": "+text)
+        cprint(PLAIN, ": "+text + '\n')
         self.irc.send('PRIVMSG '+ speaking_to +' :' + text + '\r\n')
 
     def pong(self, server):
@@ -281,26 +281,33 @@ class Bot:
 
         return False
 
-    def reply(self, msg):
-        text =  msg["text"]
-        text = string.strip(text, ",./?><;:[]{}\'\"!@#$%^&*()_-+=")
-        words = text.split()
+    def possiblyReply(self, msg):
+        PUNCTUATION = ",./?><;:[]{}\'\"!@#$%^&*()_-+="
+        words = string.strip(msg["text"], PUNCTUATION).split()
 
-        if len(words) < 2:
+        leading_words = ""
+        seed = None
+
+        # If we have enough words and the random chance is enough, reply based on the message.
+        if len(words) >= 2 and random.random() <= msg["p_reply"]:
+            cprint(GREEN, "Trying to reply to '" + str(words) + "'\n")
+            # Use a random bigram of the input message as a seed for the Markov chain
+            max_index = min(6, len(words)-1)
+            index = random.randint(1, max_index)
+            seed = (words[index-1], words[index])
+            leading_words = string.join(words[0:index+1])
+    
+        # If not, and we weren't referenced explicitly in the message, return early.
+        if not seed and (self.NICK.lower() not in [string.strip(word, PUNCTUATION).lower() for word in words]):
             return
 
-        # Use a random bigram of the input message as a seed for the Markov chain
-        max_index = min( 6, len(words)-1)
-        index = random.randint( 1, max_index)
-        seed = [ words[index-1], words[index]]
-        leading_words = string.join(words[0:index+1])
-
         # generate a response
-        response = [""]
-        self.mc.respond( seed, response )
-        reply = leading_words + " " + response[0]
+        response = self.mc.respond(seed)
+        if len(leading_words) > 0:
+            leading_words = leading_words + " "
+        reply = leading_words + response
         #print string.join(seed) + " :: " + reply
-        if response[0] == "":
+        if len(response) == 0:
             cprint(PLAIN, time.strftime("%H:%M:%S") + " : EMPTY REPLY\n")
             self.logfile.write(self.NICK + " " + time.strftime("%H:%M:%S") + " : EMPTY REPLY")
         else:
@@ -336,23 +343,14 @@ class Bot:
         self.logfile.write(msg["speaker"] + " " + time.strftime("%H:%M:%S") + " : " + msg["text"] + "\n")
         self.logfilecount = self.logfilecount + 1
 
-        doRemember = True
-        doReply = (random.random() <= msg["p_reply"])
-
-        # If a user has issued a command, we don't reply to it
+        # If a user has issued a command, don't do anything else.
         if self.handleCommands(msg):
-            doReply = False
-            doRemember = False
+          return
 
-        # and possibly reply
-        if doReply:
-           self.reply(msg)
-        #else:
-        #    cprint(BG_GREEN, "No reply\n")
+        self.possiblyReply(msg)
 
         # add the phrase to the markov database
-        if doRemember:
-            self.mc.addLine( msg["text"] )
+        self.mc.addLine(msg["text"])
 
         # if we've exceeded our log file size limit, close it and open a new one 
         if self.logfilecount > self.LOGFILE_MAX_LINES:
@@ -482,7 +480,8 @@ class Bot:
             return
       
         if msg["speaking_to"][0] == "#":
-            self.seen[ string.tolower(msg["speaker"]) ] = [ msg["speaking_to"], time.time(), msg["text"] ]
+            nick = msg["speaker"].lower()
+            self.seen[nick] = [ msg["speaking_to"], time.time(), msg["text"] ]
  
         self.determineWhoIsBeingAddressed( msg )
 
