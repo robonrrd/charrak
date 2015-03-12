@@ -314,6 +314,7 @@ class Bot:
             leading_words = string.join(words[0:index+1])
     
         # If not, and we weren't referenced explicitly in the message, return early.
+        # TODO: fix issue where this doesn't match if NICK contains one of PUNCTUATION.
         if not seed and (self.NICK.lower() not in [string.strip(word, PUNCTUATION).lower() for word in words]):
             return
 
