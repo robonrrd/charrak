@@ -91,9 +91,11 @@ class MarkovChain:
                 return False
 
     def respond(self, bigram):
+        includeBigram = False
         # If no bigram given as a seed, pick a random one.
         if not bigram:
             bigram = random.sample(self.cache, 1)[0]
+            includeBigram = True
             cprint(BLUE, "Picking " + str(bigram) + " as seed\n")
 
         # Must be a bigram
@@ -103,7 +105,9 @@ class MarkovChain:
 
         response = [""]
         self._respondHelper(bigram, response)
-        return bigram[0] + " " + bigram[1] + " " + response[0]
+        if includeBigram:
+          response[0] = bigram[0] + " " + bigram[1] + " " + response[0]
+        return response[0]
 
     def _respondHelper(self, bigram, response):
         # does it exist in our cache?
@@ -112,7 +116,7 @@ class MarkovChain:
             return
             '''
             #  pick a random bigram?
-            which = random.random() *i len(self.cache)
+            which = random.random() * len(self.cache)
             ii = 0
             for k, v in self.cache.iteritems():
                 if ii == which:
