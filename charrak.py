@@ -54,7 +54,7 @@ class Bot:
     # Irc communication functions
     def privmsg(self, speaking_to, text):
         cprint(PURPLE, speaking_to)
-        cprint(PLAIN, ": "+text)
+        cprint(PLAIN, ": "+text + '\n')
         self.irc.send('PRIVMSG '+ speaking_to +' :' + text + '\r\n')
 
     def pong(self, server):
