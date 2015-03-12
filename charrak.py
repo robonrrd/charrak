@@ -2,6 +2,7 @@
 import argparse
 import errno
 import httplib
+import logging
 import pickle
 import random
 import re
@@ -13,6 +14,7 @@ import time
 
 from threading import Timer, RLock
 
+import logger
 import markov
 from colortext import *
 
@@ -36,8 +38,8 @@ class Bot:
         self.PORT = args.port
         self.NICK = args.nick
         self.REALNAME = args.realname
-        self.OWNERS = args.owners.split(",")
-        self.CHANNELINIT = args.channels.split(",")
+        self.OWNERS = [string.strip(owner) for owner in args.owners.split(",")]
+        self.CHANNELINIT = [string.strip(channel) for channel in args.channels.split(",")]
         self.IDENT='pybot'
         self.readbuffer='' #Here we store all the messages from server
 
@@ -48,9 +50,6 @@ class Bot:
 
         # Markov chain settings
         self.p_reply = 0.1
-
-        # Logging file settings
-        self.LOGFILE_MAX_LINES = 1000
 
         # Regular db saves
         self.SAVE_TIME = args.save_period
@@ -69,8 +68,7 @@ class Bot:
 
     # Irc communication functions
     def privmsg(self, speaking_to, text):
-        cprint(PURPLE, speaking_to)
-        cprint(PLAIN, ": "+text + '\n')
+        logging.debug(PURPLE + speaking_to + PLAIN + " : " + BLUE + text)
         self.irc.send('PRIVMSG '+ speaking_to +' :' + text + '\r\n')
 
     def pong(self, server):
@@ -90,7 +88,6 @@ class Bot:
         #self.irc.send('PRIVMSG '+ msg["speaking_to"] +' :' + reply + '\r\n')
         self.privmsg(msg["speaking_to"], reply)
 
-
     def eatLinesUntilText(self, stopText):
         # Loop until we encounter the passed in 'stopText'
         while 1:
@@ -99,7 +96,7 @@ class Bot:
             self.readbuffer = temp.pop( )
 
             for line in temp:
-                cprint(YELLOW, line + "\n")
+                logging.info(YELLOW + line)
                 words = string.rstrip(line)
                 words = string.split(words)
 
@@ -121,7 +118,7 @@ class Bot:
             temp = string.split(self.readbuffer, "\n")
             self.readbuffer = temp.pop( )
             for line in temp:
-                cprint(YELLOW, line + "\n")
+                logging.info(YELLOW + line)
                 words = string.rstrip(line)
                 words = string.split(words)
 
@@ -188,19 +185,13 @@ class Bot:
         # Open our Markov chain database        
         self.mc = markov.MarkovChain(self.MARKOVDB)
 
-    def initLogging(self):
-        # Open a logging file
-        self.logfilename = time.strftime("%y.%m.%d") + "_" + time.strftime("%H:%M:%S") + ".log"
-        self.logfile = open(self.logfilename, "a")
-        self.logfilecount = 0
-
     def loadSeenDB(self):
         with self.seendb_lock:
             try:
                 with open(self.SEENDB, 'rb') as seendb:
                     self.seen = pickle.load(seendb)
             except IOError:
-                cprint(RED, "Unable to open '%s' for reading\n" % self.SEENDB)
+                logging.error(ERROR + ("Unable to open '%s' for reading" % self.SEENDB))
 
     def saveSeenDB(self):
         with self.seendb_lock:
@@ -208,7 +199,7 @@ class Bot:
                 with open(self.SEENDB, 'wb') as seendb:
                     pickle.dump(self.seen, seendb)
             except IOError:
-                cprint(RED, "Unable to open 'seendb.pkl' for writing\n")
+                logging.error(ERROR + ("Unable to open 'seendb.pkl' for writing"))
 
     def signalHandler(self, signal, frame):
         self.quit()
@@ -217,21 +208,20 @@ class Bot:
         if self.save_timer:
             self.save_timer.cancel()
         self.saveDatabases()
-        self.logfile.close()
         sys.exit(0)
 
     def saveDatabases(self):
-      cprint(GREEN, 'Saving databases.. ')
+      logging.info('Saving databases')
       self.mc.saveDatabase()
       self.saveSeenDB()
-      cprint(GREEN, 'DONE\n')
 
     def handleSaveDatabasesTimer(self):
         self.saveDatabases()
         self.save_timer = Timer(self.SAVE_TIME, self.handleSaveDatabasesTimer)
         self.save_timer.start()
 
-    def elapsedTime(self, ss):
+    @staticmethod
+    def elapsedTime(ss):
         reply = ""
         startss = ss
         if ss > 31557600:
@@ -280,24 +270,33 @@ class Bot:
             for chan in self.who:
                 for nick in self.who[chan]:
                     if words[1] == nick:
-                        cprint(YELLOW, "+o " + nick + "\n")
+                        logging.info(YELLOW + "+o " + nick)
                         self.irc.send('MODE '+ chan +' +o ' + nick + '\r\n')
                         self.ops[ chan ].append(nick)
             return True
 
         if words[0] == "seen" and len(words) == 2:
             nick = words[1]
-            if self.seen.has_key(string.tolower(nick)):
+            key = nick.lower()
+            seen_msg = ""
+            if self.seen.has_key(key):
                 seen_msg = nick + " was last seen in "
-                seen_msg = seen_msg + self.seen[nick][0] + " " 
-                last_seen = self.seen[nick][1] # in seconds since epoch
+                seen_msg = seen_msg + self.seen[key][0] + " " 
+                last_seen = self.seen[key][1] # in seconds since epoch
                 since = self.elapsedTime( time.time() - last_seen )
                 seen_msg = seen_msg + since
-                seen_msg = seen_msg + " saying '" + self.seen[nick][2] + "'"
-                self.privmsg( msg["speaking_to"], seen_msg )
+                message = string.strip(self.seen[key][2])
+                seen_msg = seen_msg + " saying '" + message + "'"
+            else:
+                seen_msg = "I haven't seen " + nick + "."
+            self.privmsg(msg["speaking_to"], seen_msg)
             return True
 
         return False
+
+    @staticmethod
+    def logChannel(speaker, msg):
+      logging.debug(CYAN + speaker + PLAIN + " : " + BLUE + msg)
 
     def possiblyReply(self, msg):
         PUNCTUATION = ",./?><;:[]{}\'\"!@#$%^&*()_-+="
@@ -308,7 +307,7 @@ class Bot:
 
         # If we have enough words and the random chance is enough, reply based on the message.
         if len(words) >= 2 and random.random() <= msg["p_reply"]:
-            cprint(GREEN, "Trying to reply to '" + str(words) + "'\n")
+            logging.info(GREEN + "Trying to reply to '" + str(words) + "'")
             # Use a random bigram of the input message as a seed for the Markov chain
             max_index = min(6, len(words)-1)
             index = random.randint(1, max_index)
@@ -316,6 +315,7 @@ class Bot:
             leading_words = string.join(words[0:index+1])
     
         # If not, and we weren't referenced explicitly in the message, return early.
+        # TODO: fix issue where this doesn't match if NICK contains one of PUNCTUATION.
         if not seed and (self.NICK.lower() not in [string.strip(word, PUNCTUATION).lower() for word in words]):
             return
 
@@ -326,13 +326,13 @@ class Bot:
         reply = leading_words + response
         #print string.join(seed) + " :: " + reply
         if len(response) == 0:
-            cprint(PLAIN, time.strftime("%H:%M:%S") + " : EMPTY REPLY\n")
-            self.logfile.write(self.NICK + " " + time.strftime("%H:%M:%S") + " : EMPTY REPLY")
+            self.logChannel(self.NICK, "EMPTY_REPLY")
         else:
             self.privmsg(msg["speaking_to"], reply)
-            self.logfile.write(self.NICK + " " + time.strftime("%H:%M:%S") + " : " + reply)
+            self.logChannel(self.NICK, reply)
 
-    def makeTinyUrl(self, url):
+    @staticmethod
+    def makeTinyUrl(url):
         # make a request to tinyurl.com to translate a url.
         # their API is of the format:
         # 'http://tinyurl.com/api-create.php?url=' + url
@@ -355,11 +355,7 @@ class Bot:
             return
 
         # add the spoken phrase to the log
-        cprint(CYAN, msg["speaker"] + " ")
-        cprint(PLAIN, time.strftime("%H:%M:%S") + " : ")
-        cprint(BLUE, msg["text"] + "\n")
-        self.logfile.write(msg["speaker"] + " " + time.strftime("%H:%M:%S") + " : " + msg["text"] + "\n")
-        self.logfilecount = self.logfilecount + 1
+        self.logChannel(msg["speaker"], msg["text"])
 
         # If a user has issued a command, don't do anything else.
         if self.handleCommands(msg):
@@ -370,21 +366,16 @@ class Bot:
         # add the phrase to the markov database
         self.mc.addLine(msg["text"])
 
-        # if we've exceeded our log file size limit, close it and open a new one 
-        if self.logfilecount > self.LOGFILE_MAX_LINES:
-            self.logfile.close()
-            self.logfilename = time.strftime("%y.%m.%d") + "_" + time.strftime("%H:%M:%S") + ".log"
-            self.logfile = open( self.logfilename, "a" )
-            self.logfilecount = 0
-
-
     def parsePrivateOwnerMessage( self, msg ):
         # The owner can issue commands to the bot, via strictly
         # constructed private messages
         words = msg["text"].split()
 
+        logging.info("Received private message: '" + string.strip(msg["text"]) + "'")
+
         # simple testing
         if len(words) == 1 and words[0] == 'ping':
+            self.logChannel(msg["speaker"], GREEN + "pong")
             self.irc.send('PRIVMSG '+ msg["speaker"] +' :' + 'pong\r\n')
             return
 
@@ -392,10 +383,9 @@ class Bot:
         elif len(words) == 3 and words[0] == "set":
             # set reply probability
             if words[1] == "p_reply":
-                cprint(CYAN, msg["speaker"] + " ")
-                cprint(PLAIN, time.strftime("%H:%M:%S") + " : ")
-                cprint(RED, "SET P_REPLY " + words[2] + "\n")
+                self.logChannel(msg["speaker"], GREEN + "SET P_REPLY " + words[2])
                 self.p_reply = float(words[2])
+                self.irc.send('PRIVMSG '+ msg["speaker"] +' :' + str(self.p_reply) + '\r\n')
             else:
                 self.dunno()
             return
@@ -403,10 +393,7 @@ class Bot:
         elif len(words) == 2 and words[0] == "get":
             # set reply probability
             if words[1] == "p_reply":
-                cprint(CYAN, msg["speaker"] + " ")
-                cprint(PLAIN, time.strftime("%H:%M:%S") + " : ")
-                cprint(RED, "GET P_REPLY " + str(self.p_reply) + "\n")
-
+                self.logChannel(msg["speaker"], GREEN + "GET P_REPLY " + str(self.p_reply))
                 self.irc.send('PRIVMSG '+ msg["speaker"] +' :' + str(self.p_reply) + '\r\n')
                 return
 
@@ -416,9 +403,7 @@ class Bot:
             if channel[0] != '#':
                 channel = '#' + channel
 
-            cprint(CYAN, msg["speaker"] + " ")
-            cprint(PLAIN, time.strftime("%H:%M:%S") + " : ")
-            cprint(RED, "PART " + channel + "\n")
+            self.logChannel(msg["speaker"], PURPLE + "PART " + channel)
             self.irc.send('PART ' + channel + '\r\n')
             return
 
@@ -428,23 +413,20 @@ class Bot:
             if channel[0] != '#':
                 channel = '#' + channel
             
-            cprint(CYAN, msg["speaker"] + " ")
-            cprint(PLAIN, time.strftime("%H:%M:%S") + " : ")
-            cprint(RED, "JOIN " + channel + "\n")
+            self.logChannel(msg["speaker"], PURPLE + "JOIN " + channel)
             self.irc.send('JOIN ' + channel + '\r\n')
             return
 
         # quit
         elif len(words) == 1 and (words[0] == 'quit' or words[0] == 'exit'):
-            cprint(CYAN, msg["speaker"] + " ")
-            cprint(PLAIN, time.strftime("%H:%M:%S") + " : ")
-            cprint(RED, "QUIT" + "\n")
-            self.Quit()
+            self.logChannel(msg["speaker"], RED + "QUIT")
+            self.quit()
 
         # if we've hit no special commands, parse this message like it was public
         self.parsePublicMessage(msg)
         
-    def preprocessText(self, text):
+    @staticmethod
+    def preprocessText(text):
         # remove all color codes
         text = re.sub('\x03(?:\d{1,2}(?:,\d{1,2})?)?', '', text)
         return text
@@ -499,17 +481,14 @@ class Bot:
       
         if msg["speaking_to"][0] == "#":
             nick = msg["speaker"].lower()
-            self.seen[nick] = [ msg["speaking_to"], time.time(), msg["text"] ]
+            self.seen[nick] = [ msg["speaking_to"], time.time(), string.strip(msg["text"]) ]
  
         self.determineWhoIsBeingAddressed( msg )
 
         if msg["speaking_to"] == self.NICK and msg["speaker"] in self.OWNERS: 
             self.parsePrivateOwnerMessage( msg )
-            return    
         elif msg["speaking_to"] != self.NICK:
             self.parsePublicMessage( msg )
-            return
-        return
 
     # information about MODE changes (ops, etc.) in channels
     def parseModeMessage(self, words):
@@ -531,8 +510,8 @@ class Bot:
                 return
 
     def main(self):
+        logger.initialize("./")
         self.initMarkovChain()
-        self.initLogging()
         self.loadSeenDB()
         self.joinIrc()
 
@@ -556,8 +535,6 @@ class Bot:
 
                 if words[0]=="PING":
                     self.pong(words[1])
-                    # flush logfile
-                    self.logfile.flush()
 
                 elif line.find('PRIVMSG')!=-1: #Call a parsing function
                     self.parsePrivMessage(line)

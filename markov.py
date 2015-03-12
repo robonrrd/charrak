@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import logging
 import math
 import os
 import random
@@ -33,9 +34,9 @@ class MarkovChain:
                     self.cache = db[0]
                     self.total = db[1]
             except IOError:
-                cprint(YELLOW, "Unable to read database file '%s': Using empty database\n" % self.dbFilePath)
+                logging.warn(WARNING + "Unable to read database file '%s': Using empty database\n" % self.dbFilePath)
             except ValueError:
-                cprint(YELLOW, "Database '%s' corrupt or unreadable: Using empty database\n" % self.dbFilePath)
+                logging.warn(WARNING + "Database '%s' corrupt or unreadable: Using empty database\n" % self.dbFilePath)
 
     def parseLineIntoSentences(self, line):
         line = re.sub('[\',@#<>!@#^&*]', '', line.lower())
@@ -87,7 +88,7 @@ class MarkovChain:
                     pickle.dump(db, dbfile)
                 return True
             except IOError:
-                cprint(RED, "Failed to write Database file to '%s'\n" % self.dbFilePath)
+                logging.error(ERROR + "Failed to write Database file to '%s'\n" % self.dbFilePath)
                 return False
 
     def respond(self, bigram):
@@ -96,11 +97,11 @@ class MarkovChain:
         if not bigram:
             bigram = random.sample(self.cache, 1)[0]
             includeBigram = True
-            cprint(BLUE, "Picking " + str(bigram) + " as seed\n")
+            logging.info(BLUE + "Picking " + str(bigram) + " as seed")
 
         # Must be a bigram
         if len(bigram) != 2:
-            cprint(RED, "Invalid bigram " + str(bigram) + " passed as seed\n")
+            logging.error(ERROR + "Invalid bigram " + str(bigram) + " passed as seed")
             return ""
 
         response = [""]
