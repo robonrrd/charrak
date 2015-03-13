@@ -158,6 +158,8 @@ class Bot:
 
     # Join the IRC network
     def joinIrc(self):
+        if self.irc:
+            self.irc.close()
         self.irc = socket.socket()
         self.irc.connect((self.HOST, self.PORT))
         self.irc.send("NICK %s\r\n" % self.NICK)
@@ -208,6 +210,7 @@ class Bot:
         if self.save_timer:
             self.save_timer.cancel()
         self.saveDatabases()
+        self.irc.close()
         sys.exit(0)
 
     def saveDatabases(self):
@@ -522,12 +525,20 @@ class Bot:
         self.save_timer.start()
 
         # Loop forever, parsing input text
-        while 1:
+        while True:
             try:
+                recv = self.irc.recv(1024)
+                while len(recv) == 0:
+                    logging.warning(WARNING + "Connection closed: Trying to reconnect in 5 seconds...")
+                    time.sleep(5)
+                    self.joinIrc()
+                    recv = self.irc.recv(1024)
+
                 self.readbuffer = self.readbuffer + self.irc.recv(1024)
             except socket.error as (code, msg):
                 if code != errno.EINTR:
                     raise
+
             temp = string.split(self.readbuffer, "\n")
             self.readbuffer = temp.pop( )
 
