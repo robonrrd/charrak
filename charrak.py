@@ -188,18 +188,22 @@ class Bot:
     def loadSeenDB(self):
         with self.seendb_lock:
             try:
+                self.seendb_lock.acquire()
                 with open(self.SEENDB, 'rb') as seendb:
                     self.seen = pickle.load(seendb)
             except IOError:
                 logging.error(ERROR + ("Unable to open '%s' for reading" % self.SEENDB))
+            self.seendb_lock.release()
 
     def saveSeenDB(self):
         with self.seendb_lock:
             try:
+                self.seendb_lock.acquire()
                 with open(self.SEENDB, 'wb') as seendb:
                     pickle.dump(self.seen, seendb)
             except IOError:
                 logging.error(ERROR + ("Unable to open 'seendb.pkl' for writing"))
+            self.seendb_lock.release()
 
     def signalHandler(self, signal, frame):
         self.quit()
@@ -212,7 +216,10 @@ class Bot:
 
     def saveDatabases(self):
       logging.info('Saving databases')
+
+      self.seendb_lock.acquire()
       self.mc.saveDatabase()
+      self.seendb_lock.release()
       self.saveSeenDB()
 
     def handleSaveDatabasesTimer(self):
