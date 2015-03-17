@@ -21,6 +21,10 @@ class Irc:
         # a channel?
         self._eatLinesUntilText('End of /MOTD command')
 
+    def __del__(self):
+        if self.irc:
+            self.irc.close()
+
     def _eatLinesUntilText(self, stopText):
         # Loop until we encounter the passed in 'stopText'
         while 1:
