@@ -122,8 +122,7 @@ class Bot:
         if self.save_timer:
             self.save_timer.cancel()
         self.saveDatabases()
-        if self.irc:
-            self.irc.close()
+        self.irc = None
         sys.exit(0)
 
 
