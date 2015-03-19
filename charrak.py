@@ -109,7 +109,8 @@ class Bot:
                     return
 
     def eatLinesUntilEndOfNames(self, population, operators):
-        # get the current population of the channel
+        # Get the current population of the channel
+        # The server response will look like ('gravy' is the bot's name here):
         # :magnet.llarian.net 353 gravy = #test333 :gravy @nrrd
         # :magnet.llarian.net 366 gravy #test333 :
 
@@ -269,7 +270,6 @@ class Bot:
         # parse the message
         words = msg["text"].split()
         if words[0] == "op" and len(words) == 2:
-            print " +o", words[1]
             # step through all channels we'e in an op the named user when we see her
             for chan in self.who:
                 for nick in self.who[chan]:
@@ -463,6 +463,7 @@ class Bot:
     # public channel message
     # :nrrd!~jeff@bacon2.burri.to PRIVMSG #test333 :foo
     def parsePrivMessage(self, line):
+        # ignore any line with a url in it
         m = re.search('^:(\w*)!.(\w*)@(\S*)\s(\S*)\s(\S*) :(.*)', line)
         if m is None:
             return
@@ -532,7 +533,8 @@ class Bot:
                     time.sleep(5)
                     self.joinIrc()
                     recv = self.irc.recv(1024)
-                self.readbuffer = self.readbuffer + self.irc.recv(1024)
+
+                self.readbuffer = self.readbuffer + recv
             except socket.error as (code, msg):
                 if code != errno.EINTR:
                     raise
@@ -541,7 +543,6 @@ class Bot:
             self.readbuffer = temp.pop( )
 
             for line in temp:
-                print "line:", line
                 # strip whitespace and split into words
                 words = string.rstrip(line)
                 words = string.split(words)
