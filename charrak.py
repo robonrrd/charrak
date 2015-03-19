@@ -324,7 +324,7 @@ class Bot:
             return
 
         # generate a response
-        response = self.mc.respond(seed)
+        response = string.strip(self.mc.respond(seed))
         if len(leading_words) > 0:
             leading_words = leading_words + " "
         reply = leading_words + response
