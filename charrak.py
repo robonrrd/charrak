@@ -38,7 +38,7 @@ class Bot:
         self.NICK = args.nick
         self.REALNAME = args.realname
         self.OWNERS = [string.strip(owner) for owner in args.owners.split(",")]
-        self.CHANNELINIT = ["#bottest"] # 1[string.strip(channel) for channel in args.channels.split(",")]
+        self.CHANNELINIT = [string.strip(channel) for channel in args.channels.split(",")]
         self.IDENT='pybot'
 
         # Caches of IRC status
