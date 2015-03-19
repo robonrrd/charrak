@@ -29,7 +29,7 @@ parser.add_argument("--channels", help="The list of channels to join", default="
 parser.add_argument("--save_period", help="How often (in seconds) to save databases", default=300)
 parser.add_argument("--seendb", help="Path to seendb", default="./seendb.pkl")
 parser.add_argument("--markovdb", help="Path to markovdb", default="./charrakdb")
-parser.add_argument("--ignore", help="The optional list of nicks to ignor", default="")
+parser.add_argument("--ignore", help="The optional list of nicks to ignore", default="")
 
 
 class Bot:
@@ -42,7 +42,7 @@ class Bot:
         self.REALNAME = args.realname
         self.OWNERS = [string.strip(owner) for owner in args.owners.split(",")]
         self.IGNORE = [string.strip(ignore) for ignore in args.ignore.split(",")]
-        self.CHANNELINIT = ["#bottest"] # 1[string.strip(channel) for channel in args.channels.split(",")]
+        self.CHANNELINIT = [string.strip(channel) for channel in args.channels.split(",")]
         self.IDENT='pybot'
 
         # Caches of IRC status
