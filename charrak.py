@@ -39,7 +39,7 @@ class Bot:
         self.NICK = args.nick
         self.REALNAME = args.realname
         self.OWNERS = [string.strip(owner) for owner in args.owners.split(",")]
-        self.CHANNELINIT = [string.strip(channel) for channel in args.channels.split(",")]
+        self.CHANNELINIT = ["#bottest"] # 1[string.strip(channel) for channel in args.channels.split(",")]
         self.IDENT='pybot'
         self.readbuffer='' #Here we store all the messages from server
 
@@ -113,7 +113,7 @@ class Bot:
         # :magnet.llarian.net 353 gravy = #test333 :gravy @nrrd
         # :magnet.llarian.net 366 gravy #test333 :
 
-        while 1:
+        while True:
             self.readbuffer = self.readbuffer + self.irc.recv(1024)
             temp = string.split(self.readbuffer, "\n")
             self.readbuffer = temp.pop( )
@@ -464,13 +464,12 @@ class Bot:
     # :nrrd!~jeff@bacon2.burri.to PRIVMSG #test333 :foo
     def parsePrivMessage(self, line):
         m = re.search('^:(\w*)!.(\w*)@(\S*)\s(\S*)\s(\S*) :(.*)', line)
-
         if m is None:
             return
 
         text = m.group(6)
         text = self.preprocessText(text)
-        
+
         msg = {
             "speaker"       : m.group(1) ,                 # the nick of who's speaking
             "speaker_email" : m.group(2)+'@'+m.group(3) ,  # foo@bar.com
@@ -482,7 +481,7 @@ class Bot:
 
         if msg["privmsg"] != 'PRIVMSG':
             return
-      
+
         if msg["speaking_to"][0] == "#":
             nick = msg["speaker"].lower()
             # Lock here to avoid writing to the seen database while pickling it.
@@ -533,7 +532,6 @@ class Bot:
                     time.sleep(5)
                     self.joinIrc()
                     recv = self.irc.recv(1024)
-
                 self.readbuffer = self.readbuffer + self.irc.recv(1024)
             except socket.error as (code, msg):
                 if code != errno.EINTR:
@@ -543,6 +541,7 @@ class Bot:
             self.readbuffer = temp.pop( )
 
             for line in temp:
+                print "line:", line
                 # strip whitespace and split into words
                 words = string.rstrip(line)
                 words = string.split(words)
