@@ -34,9 +34,9 @@ class MarkovChain:
                     self.cache = db[0]
                     self.total = db[1]
             except IOError:
-                logging.warn(WARNING + "Unable to read database file '%s': Using empty database\n" % self.dbFilePath)
+                logging.warn(WARNING + "Unable to read database file '%s': Using empty database" % self.dbFilePath)
             except ValueError:
-                logging.warn(WARNING + "Database '%s' corrupt or unreadable: Using empty database\n" % self.dbFilePath)
+                logging.warn(WARNING + "Database '%s' corrupt or unreadable: Using empty database" % self.dbFilePath)
 
     def parseLineIntoSentences(self, line):
         line = re.sub('[\',@#<>!@#^&*]', '', line.lower())
