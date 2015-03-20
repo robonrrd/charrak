@@ -62,11 +62,6 @@ class Bot:
         signal.signal(signal.SIGTERM, self.signalHandler)
         signal.signal(signal.SIGQUIT, self.signalHandler)
 
-    # Irc communication functions
-    def privmsg(self, speaking_to, text):
-        logging.debug(PURPLE + speaking_to + PLAIN + " : " + BLUE + text)
-        self.irc.send('PRIVMSG '+ speaking_to +' :' + text + '\r\n')
-
     # Picks a random confused reply
     def dunno(self, msg):
         replies = [ "I dunno, $who",
@@ -77,8 +72,7 @@ class Bot:
 
         which = random.randint(0 , len(replies)-1)
         reply = re.sub( "$who", msg["speaker"], replies[which] )
-        #self.irc.send('PRIVMSG '+ msg["speaking_to"] +' :' + reply + '\r\n')
-        self.privmsg(msg["speaking_to"], reply)
+        self.irc.privmsg(msg["speaking_to"], reply)
 
     # Join the IRC network
     def joinIrc(self):
@@ -198,7 +192,7 @@ class Bot:
                 seen_msg = seen_msg + " saying '" + message + "'"
             else:
                 seen_msg = "I haven't seen " + nick + "."
-            self.privmsg(msg["speaking_to"], seen_msg)
+            self.irc.privmsg(msg["speaking_to"], seen_msg)
             return True
 
         return False
@@ -237,7 +231,7 @@ class Bot:
         if len(response) == 0:
             self.logChannel(self.NICK, "EMPTY_REPLY")
         else:
-            self.privmsg(msg["speaking_to"], reply)
+            self.irc.privmsg(msg["speaking_to"], reply)
             self.logChannel(self.NICK, reply)
 
     @staticmethod
@@ -249,11 +243,10 @@ class Bot:
         conn.request("GET", "api-create.php?url=" + url)
         r1 = conn.getresponse()
         if r1.status == 200:
-            irc.send('PRIVMSG '+OWNER+' :' + r1.read() + '\r\n')        
+            self.irc.privmsg(OWNER, r1.read())
         else:
-            msg = 'PRIVMSG '+OWNER+' :' + 'Tinyurl problem: '
-            msg += 'status=' + str(r1.status) + '\r\n'
-            irc.send(msg)
+            msg = 'Tinyurl problem: status=' + str(r1.status)
+            self.irc.privmsg(OWNER, msg)
         return
 
 
@@ -285,7 +278,7 @@ class Bot:
         # simple testing
         if len(words) == 1 and words[0] == 'ping':
             self.logChannel(msg["speaker"], GREEN + "pong")
-            self.irc.send('PRIVMSG '+ msg["speaker"] +' :' + 'pong\r\n')
+            self.irc.privmsg(msg["speaker"], pong)
             return
 
         # set internal variables
@@ -294,7 +287,7 @@ class Bot:
             if words[1] == "p_reply":
                 self.logChannel(msg["speaker"], GREEN + "SET P_REPLY " + words[2])
                 self.p_reply = float(words[2])
-                self.irc.send('PRIVMSG '+ msg["speaker"] +' :' + str(self.p_reply) + '\r\n')
+                self.irc.privmsg(msg["speaker"], str(self.p_reply))
             else:
                 self.dunno()
             return
@@ -303,7 +296,7 @@ class Bot:
             # set reply probability
             if words[1] == "p_reply":
                 self.logChannel(msg["speaker"], GREEN + "GET P_REPLY " + str(self.p_reply))
-                self.irc.send('PRIVMSG '+ msg["speaker"] +' :' + str(self.p_reply) + '\r\n')
+                self.irc.privmsg(msg["speaker"], str(self.p_reply))
                 return
 
         # leave a channel

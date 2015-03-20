@@ -125,8 +125,10 @@ class Irc:
         self.readbuffer = temp.pop()
         return temp
 
-    def send(self, msg):
-        self.irc.sendall(msg)
+    # Irc communication functions
+    def privmsg(self, speaking_to, text):
+        logging.debug(PURPLE + speaking_to + PLAIN + " : " + BLUE + text)
+        self.send('PRIVMSG '+ speaking_to +' :' + text + '\r\n')
 
     def _pong(self, server):
         #cprint(GREEN, "PONG " + server + "\n")
