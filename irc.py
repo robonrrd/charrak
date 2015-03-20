@@ -37,7 +37,7 @@ class Irc:
 
                 # TODO: pull this out into a method to check for pings
                 if len(words) > 0 and (words[0]=="PING"):
-                    self._pong(words[1])
+                    self.pong(words[1])
 
                 # This is a hack, but how should I detect when to join
                 # a channel?
@@ -57,7 +57,7 @@ class Irc:
                 words = string.split(words)
 
                 if(words[0]=="PING"):
-                    self._pong(words[1])
+                    self.pong(words[1])
 
                 # This is a hack, but how should I detect when we're
                 # done joining?
@@ -130,7 +130,7 @@ class Irc:
         logging.debug(PURPLE + speaking_to + PLAIN + " : " + BLUE + text)
         self.send('PRIVMSG '+ speaking_to +' :' + text + '\r\n')
 
-    def _pong(self, server):
+    def pong(self, server):
         #cprint(GREEN, "PONG " + server + "\n")
         self.send("PONG %s\r\n" % server)
 
