@@ -14,8 +14,8 @@ class Irc:
 
         self.irc = socket.socket()
         self.irc.connect((host, port))
-        self.irc.send("NICK %s\r\n" % nick)
-        self.irc.send("USER %s %s bla :%s\r\n" % (ident, host, realname))
+        self.send("NICK %s\r\n" % nick)
+        self.send("USER %s %s bla :%s\r\n" % (ident, host, realname))
 
         # This is a hack, but how should I detect when I've successfully joined
         # a channel?
@@ -93,7 +93,7 @@ class Irc:
         channel = str(channel)
         if channel[0] != '#':
             channel = '#' + channel
-        self.irc.send('JOIN ' + channel + '\n')
+        self.send('JOIN ' + channel + '\n')
 
         population = []
         operators = []
@@ -105,7 +105,7 @@ class Irc:
         channel = str(channel)
         if channel[0] != '#':
             channel = '#' + channel
-        self.irc.send('PART ' + channel + '\r\n')
+        self.send('PART ' + channel + '\r\n')
 
     def readlines(self):
         try:
@@ -125,7 +125,10 @@ class Irc:
         self.readbuffer = temp.pop()
         return temp
 
+    def send(self, msg):
+        self.irc.sendall(msg)
+
     def _pong(self, server):
         #cprint(GREEN, "PONG " + server + "\n")
-        self.irc.send("PONG %s\r\n" % server)
+        self.send("PONG %s\r\n" % server)
 
