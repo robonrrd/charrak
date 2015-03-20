@@ -427,7 +427,7 @@ class Bot:
                 words = string.split(words)
 
                 if words[0]=="PING":
-                    self.pong(words[1])
+                    self.irc.pong(words[1])
 
                 elif line.find('PRIVMSG')!=-1: #Call a parsing function
                     self.parsePrivMessage(line)
