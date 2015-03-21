@@ -134,3 +134,5 @@ class Irc:
         #cprint(GREEN, "PONG " + server + "\n")
         self.send("PONG %s\r\n" % server)
 
+    def send(self, msg):
+        self.irc.sendall(msg)
