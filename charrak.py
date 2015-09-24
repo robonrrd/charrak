@@ -438,6 +438,8 @@ class Bot:
     def determineWhoIsBeingAddressed( self, msg ):
         msg["addressing"] = ""
         words = msg["text"].split()
+        if len(words) == 0:
+          return
 
         # strip off direct addressing (i.e. "jeff: go jump in a lake")
         first_word = words[0].rstrip(":,!?")
@@ -489,7 +491,7 @@ class Bot:
             with self.seendb_lock:
               self.seen[nick] = [ msg["speaking_to"], time.time(), string.strip(msg["text"]) ]
  
-        self.determineWhoIsBeingAddressed( msg )
+        self.determineWhoIsBeingAddressed(msg)
 
         if msg["speaking_to"] == self.NICK and msg["speaker"] in self.OWNERS: 
             self.parsePrivateOwnerMessage( msg )
