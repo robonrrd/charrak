@@ -11,6 +11,8 @@ import socket
 import string
 import signal
 import time
+import os
+import shutil
 
 from threading import Timer, RLock
 
@@ -214,9 +216,27 @@ class Bot:
         self.irc.close()
         sys.exit(0)
 
+
+    def copyFile(self, source, destination):
+        assert not os.path.isabs(source)
+        dstdir =  os.path.join(destination, os.path.dirname(source))
+        os.makedirs(source) # create all directories, raise an error if it already exists
+        shutil.copy(source, destination)
+        
+    def copyDatabases(self):
+        # copy markov database
+        srcfile = self.MARKOVDB
+        dstroot = srcfile + ".bak"
+        self.copyFile(srcfile, desroot)
+
+        # copy seen database
+        srcfile = self.SEENDB
+        dstroot = srcfile + ".bak"
+        self.copyFile(srcfile, desroot)
+        
     def saveDatabases(self):
       logging.info('Saving databases')
-
+      self.copyDatabases()
       self.mc.saveDatabase()
       self.saveSeenDB()
 

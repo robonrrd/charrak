@@ -39,7 +39,7 @@ class MarkovChain:
                 logging.warn(WARNING + "Database '%s' corrupt or unreadable: Using empty database" % self.dbFilePath)
 
     def parseLineIntoSentences(self, line):
-        line = re.sub('[\',@#<>!@#^&*]', '', line.lower())
+        line = re.sub('[\'/,@#<>!@#^&*]', '', line.lower())
         return line.split('.!?()')
 
     def bigrams(self, sentence):

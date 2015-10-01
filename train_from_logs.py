@@ -2,6 +2,7 @@
 import sys
 import re
 import markov
+import string
 
 
 files = sys.argv[1:]
@@ -21,20 +22,23 @@ for file in files:
             empty_reply_index = line.find("EMPTY REPLY")
             if empty_reply_index > -1:
                 line = line[empty_reply_index+11:]
-                words = line.split()
-
             else:
                 cr_index = line.find("\r")
                 line = line[cr_index+1:]
-                words = line.split()
+
+            line = filter(string.printable.__contains__,line)
+            words = line.split()
 
         if len(words) > 3:
+            words = line.split()
+            if words[3] == "ACTION":
+                continue
+
             text = " ".join(words[3:])
-            #text = re.sub(r'[^a-zA-Z ]+', '', text).lstrip().lower()
             text = text.lstrip()
             if not text.isspace() and len(text) > 0:
                 mc.addLine(text)
 
-    f.close()
+f.close()
 
 mc.saveDatabase()
