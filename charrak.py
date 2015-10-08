@@ -183,8 +183,8 @@ class Bot:
         population = []
         operators = []
         self.eatLinesUntilEndOfNames(population, operators)
-        self.who[ channel ] = population
-        self.ops[ channel ] = operators
+        self.who[ channel ] = [s.strip("@") for s in population]
+        self.ops[ channel ] = [s.strip("@") for s in operators]
 
     def initMarkovChain(self):
         # Open our Markov chain database        
@@ -220,19 +220,22 @@ class Bot:
     def copyFile(self, source, destination):
         assert not os.path.isabs(source)
         dstdir =  os.path.join(destination, os.path.dirname(source))
-        os.makedirs(source) # create all directories, raise an error if it already exists
+        try:
+            os.makedirs(source) # create all directories, raise an error if it already exists
+        except:
+            pass
         shutil.copy(source, destination)
         
     def copyDatabases(self):
         # copy markov database
         srcfile = self.MARKOVDB
         dstroot = srcfile + ".bak"
-        self.copyFile(srcfile, desroot)
+        self.copyFile(srcfile, dstroot)
 
         # copy seen database
         srcfile = self.SEENDB
         dstroot = srcfile + ".bak"
-        self.copyFile(srcfile, desroot)
+        self.copyFile(srcfile, dstroot)
         
     def saveDatabases(self):
       logging.info('Saving databases')
@@ -283,7 +286,6 @@ class Bot:
             reply = reply + "and "
         reply = reply + ("%.3f seconds ago" % ss)
         return reply
-
 
     def handleCommands( self, msg ):
         # is the speaker an owner or an op?
