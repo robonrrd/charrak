@@ -177,7 +177,7 @@ class Bot:
 
     def joinChannel(self, channel):
         self.irc.send('JOIN ' + channel + '\n')
-        
+
         population = []
         operators = []
         self.eatLinesUntilEndOfNames(population, operators)
@@ -185,7 +185,7 @@ class Bot:
         self.ops[ channel ] = operators
 
     def initMarkovChain(self):
-        # Open our Markov chain database        
+        # Open our Markov chain database
         self.mc = markov.MarkovChain(self.MARKOVDB)
 
     def loadSeenDB(self):
@@ -233,12 +233,12 @@ class Bot:
             years = ss // 31557600
             reply = reply + ("%g years " % years)
             ss = ss - years*31557600
-            
+
         if ss > 2678400: # 31 days
             months = ss // 2678400
             reply = reply + ("%g months " % months)
             ss = ss - months*2678400
-            
+
         if ss > 604800:
             weeks = ss // 604800
             reply = reply + ("%g weeks " % weeks)
@@ -285,7 +285,7 @@ class Bot:
             seen_msg = ""
             if self.seen.has_key(key):
                 seen_msg = nick + " was last seen in "
-                seen_msg = seen_msg + self.seen[key][0] + " " 
+                seen_msg = seen_msg + self.seen[key][0] + " "
                 last_seen = self.seen[key][1] # in seconds since epoch
                 since = self.elapsedTime( time.time() - last_seen )
                 seen_msg = seen_msg + since
@@ -317,7 +317,7 @@ class Bot:
             index = random.randint(1, max_index)
             seed = (words[index-1], words[index])
             leading_words = string.join(words[0:index+1])
-    
+
         # If not, and we weren't referenced explicitly in the message, return early.
         # TODO: fix issue where this doesn't match if NICK contains one of PUNCTUATION.
         if not seed and (self.NICK.lower() not in [string.strip(word, PUNCTUATION).lower() for word in words]):
@@ -344,7 +344,7 @@ class Bot:
         conn.request("GET", "api-create.php?url=" + url)
         r1 = conn.getresponse()
         if r1.status == 200:
-            irc.send('PRIVMSG '+OWNER+' :' + r1.read() + '\r\n')        
+            irc.send('PRIVMSG '+OWNER+' :' + r1.read() + '\r\n')
         else:
             msg = 'PRIVMSG '+OWNER+' :' + 'Tinyurl problem: '
             msg += 'status=' + str(r1.status) + '\r\n'
@@ -416,7 +416,7 @@ class Bot:
             channel = str(words[1]);
             if channel[0] != '#':
                 channel = '#' + channel
-            
+
             self.logChannel(msg["speaker"], PURPLE + "JOIN " + channel)
             self.irc.send('JOIN ' + channel + '\r\n')
             return
@@ -428,7 +428,7 @@ class Bot:
 
         # if we've hit no special commands, parse this message like it was public
         self.parsePublicMessage(msg)
-        
+
     @staticmethod
     def preprocessText(text):
         # remove all color codes
@@ -488,10 +488,10 @@ class Bot:
             # Lock here to avoid writing to the seen database while pickling it.
             with self.seendb_lock:
               self.seen[nick] = [ msg["speaking_to"], time.time(), string.strip(msg["text"]) ]
- 
+
         self.determineWhoIsBeingAddressed( msg )
 
-        if msg["speaking_to"] == self.NICK and msg["speaker"] in self.OWNERS: 
+        if msg["speaking_to"] == self.NICK and msg["speaker"] in self.OWNERS:
             self.parsePrivateOwnerMessage( msg )
         elif msg["speaking_to"] != self.NICK:
             self.parsePublicMessage( msg )
@@ -552,7 +552,7 @@ class Bot:
 
                 elif line.find('PRIVMSG')!=-1: #Call a parsing function
                     self.parsePrivMessage(line)
-                    
+
                 elif words[1] == "MODE":
                     self.parseModeMessage(words)
 

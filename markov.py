@@ -61,7 +61,7 @@ class MarkovChain:
                 else:
                     newValue = bg[ii+1][1]
 
-                if self.cache.get( bg[ii] ) == None: 
+                if self.cache.get( bg[ii] ) == None:
                     # we've never seen this bigram
                     self.cache[ bg[ii] ] = [ [1, newValue] ]
                     self.total[ bg[ii] ] = 1
@@ -112,7 +112,7 @@ class MarkovChain:
 
     def _respondHelper(self, bigram, response):
         # does it exist in our cache?
-        if self.cache.get(bigram) == None: 
+        if self.cache.get(bigram) == None:
             # end?
             return
             '''
