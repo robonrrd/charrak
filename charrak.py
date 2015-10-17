@@ -46,6 +46,7 @@ class Bot:
         self.readbuffer='' #Here we store all the messages from server
 
         # Caches of IRC status
+        # TODO: use dicts of sets instead of dicts of lists here
         self.who =  {} # lists of who is in what channels
         self.ops =  {} # lists of ops is in what channels
         self.seen = {} # lists of who said what when
@@ -77,6 +78,12 @@ class Bot:
         #cprint(GREEN, "PONG " + server + "\n")
         self.irc.send("PONG %s\r\n" % server)
 
+    def uniquify(self, seq):
+        # not order preserving
+        set = {}
+        map(set.__setitem__, seq, [])
+        return set.keys()
+                                
     # Picks a random confused reply
     def dunno(self, msg):
         replies = [ "I dunno, $who",
@@ -288,17 +295,37 @@ class Bot:
         return reply
 
     def handleCommands( self, msg ):
-        # is the speaker an owner or an op?
         # parse the message
         words = msg["text"].split()
+
         if words[0] == "op" and len(words) == 2:
-            # step through all channels we'e in an op the named user when we see her
+            # Is the speaker an owner or an op?
+            speaker = msg["speaker"]
+            isValid = False
+            if speaker in self.OWNERS:
+                isValid = True
+            else:
+                for chan in self.who:
+                    if speaker in self.ops[ chan ]:
+                        isValid = True
+                        break
+
+            if not isValid:
+                logging.info(YELLOW + speaker + " is not an op or owner")
+                return False
+
+            # step through all channels we're in and op the named user when
+            # we see her
             for chan in self.who:
                 for nick in self.who[chan]:
                     if words[1] == nick:
                         logging.info(YELLOW + "+o " + nick)
                         self.irc.send('MODE '+ chan +' +o ' + nick + '\r\n')
                         self.ops[ chan ].append(nick)
+
+                        # make our list of ops unique
+                        self.ops[ chan] = self.uniquify(self.ops[ chan ])
+
             return True
 
         if words[0] == "seen" and len(words) == 2:
