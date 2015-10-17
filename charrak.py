@@ -225,13 +225,7 @@ class Bot:
 
 
     def copyFile(self, source, destination):
-        assert not os.path.isabs(source)
-        dstdir =  os.path.join(destination, os.path.dirname(source))
-        try:
-            os.makedirs(source) # create all directories, raise an error if it already exists
-        except:
-            pass
-        shutil.copy(source, destination)
+        shutil.copyfile(source, destination)
         
     def copyDatabases(self):
         # copy markov database
