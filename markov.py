@@ -19,7 +19,7 @@ except ImportError:
 
 class MarkovChain:
     def __init__(self, dbFilePath=None):
-        self.db = {("","") : ([], 1)}
+        self.db = {("","") : []}
         self.db_lock = RLock()
 
         self.dbFilePath = dbFilePath
@@ -64,20 +64,21 @@ class MarkovChain:
                 with self.db_lock:
                     if self.db.get(bg[ii]) == None:
                         # we've never seen this bigram
-                        self.db[bg[ii]] = ([[1, newValue]], 1)
+                        self.db[bg[ii]] = [[1, newValue]]
                     else:
                         # seen it:
                         val = self.db[bg[ii]]
                         found = False
-                        for rr in val[0]:
+                        for rr in val:
                             if rr[1] == newValue:
                                 rr[0] = rr[0] + 1
                                 found = True
                                 break
                         if not found:
-                            val[0].append([1, bg[ii+1][1]])
+                            val.append([1, bg[ii+1][1]])
 
-                        self.db[bg[ii]] = (val[0], val[1]+1)
+                        self.db[bg[ii]] = val
+        logging.info("Database: %s" % str(self.db))
 
     def saveDatabase(self):
         with self.db_lock:
@@ -92,11 +93,12 @@ class MarkovChain:
                 return False
 
     def respond(self, bigram):
+        import pdb; pdb.set_trace()
         includeBigram = False
         # If no bigram given as a seed, pick a random one.
         if not bigram:
             with self.db_lock:
-                bigram = random.sample(self.db, 1)[0]
+                bigram = random.choice(self.db.keys())
                 includeBigram = True
                 logging.info(BLUE + "Picking " + str(bigram) + " as seed")
 
@@ -130,8 +132,8 @@ class MarkovChain:
                 '''
 
         # pick a random response
-        which = int(math.floor(random.random()*self.db[bigram][1]) + 1)
-        values = self.db[bigram][0]
+        values = self.db[bigram]
+        which = int(math.floor(random.random()*len(values)) + 1)
         ii = 0
         for v in values:
             ii = ii + v[0]
