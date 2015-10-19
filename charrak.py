@@ -41,7 +41,8 @@ class Bot:
         self.NICK = args.nick
         self.REALNAME = args.realname
         self.OWNERS = [string.strip(owner) for owner in args.owners.split(",")]
-        self.CHANNELINIT = ["#bottest"] # 1[string.strip(channel) for channel in args.channels.split(",")]
+        self.CHANNELINIT = [string.strip(channel) for channel in
+                            args.channels.split(",")]
         self.IDENT='pybot'
         self.readbuffer='' #Here we store all the messages from server
 
@@ -55,7 +56,7 @@ class Bot:
         self.p_reply = 0.1
 
         # Regular db saves
-        self.SAVE_TIME = args.save_period
+        self.SAVE_TIME = float(args.save_period)
         self.save_timer = None
 
         # Set up a lock for the seen db
@@ -75,7 +76,6 @@ class Bot:
         self.irc.send('PRIVMSG '+ speaking_to +' :' + text + '\r\n')
 
     def pong(self, server):
-        #cprint(GREEN, "PONG " + server + "\n")
         self.irc.send("PONG %s\r\n" % server)
 
     def uniquify(self, seq):
@@ -83,14 +83,14 @@ class Bot:
         set = {}
         map(set.__setitem__, seq, [])
         return set.keys()
-                                
+
     # Picks a random confused reply
     def dunno(self, msg):
-        replies = [ "I dunno, $who",
-                    "I'm not following you."
-                    "I'm not following you, $who."
-                    "I don't understand.",
-                    "You're confusing, $who." ]
+        replies = ["I dunno, $who",
+                   "I'm not following you."
+                   "I'm not following you, $who."
+                   "I don't understand.",
+                   "You're confusing, $who."]
 
         which = random.randint(0 , len(replies)-1)
         reply = re.sub( "$who", msg["speaker"], replies[which] )
@@ -173,28 +173,29 @@ class Bot:
         self.irc = socket.socket()
         self.irc.connect((self.HOST, self.PORT))
         self.irc.send("NICK %s\r\n" % self.NICK)
-        self.irc.send("USER %s %s bla :%s\r\n" % (self.IDENT, self.HOST, self.REALNAME))
+        self.irc.send("USER %s %s bla :%s\r\n" %
+                      (self.IDENT, self.HOST, self.REALNAME))
 
         # This is a hack, but how should I detect when I've successfully joined
         # a channel?
         self.eatLinesUntilText('End of /MOTD command')
 
-        # Join the initial channel
+        # Join the initial channels
         for c in self.CHANNELINIT:
-          self.joinChannel(c)
+            self.joinChannel(c)
 
 
     def joinChannel(self, channel):
         self.irc.send('JOIN ' + channel + '\n')
-        
+
         population = []
         operators = []
         self.eatLinesUntilEndOfNames(population, operators)
-        self.who[ channel ] = [s.strip("@") for s in population]
-        self.ops[ channel ] = [s.strip("@") for s in operators]
+        self.who[channel] = [s.strip("@") for s in population]
+        self.ops[channel] = [s.strip("@") for s in operators]
 
     def initMarkovChain(self):
-        # Open our Markov chain database        
+        # Open our Markov chain database
         self.mc = markov.MarkovChain(self.MARKOVDB)
 
     def loadSeenDB(self):
@@ -203,7 +204,9 @@ class Bot:
                 with open(self.SEENDB, 'rb') as seendb:
                     self.seen = pickle.load(seendb)
             except IOError:
-                logging.error(ERROR + ("Unable to open '%s' for reading" % self.SEENDB))
+                logging.error(WARNING +
+                              ("Unable to open seen db '%s' for reading" %
+                               self.SEENDB))
 
     def saveSeenDB(self):
         with self.seendb_lock:
@@ -211,7 +214,9 @@ class Bot:
                 with open(self.SEENDB, 'wb') as seendb:
                     pickle.dump(self.seen, seendb)
             except IOError:
-                logging.error(ERROR + ("Unable to open 'seendb.pkl' for writing"))
+                logging.error(ERROR +
+                              ("Unable to open seed db '%s' for writing" %
+                               self.SEENDB))
 
     def signalHandler(self, signal, frame):
         self.quit()
@@ -223,26 +228,19 @@ class Bot:
         self.irc.close()
         sys.exit(0)
 
+    @staticmethod
+    def createBackup(source):
+        if os.path.isfile(source):
+            dst = source + ".bak"
+            shutil.copyfile(source, dst)
 
-    def copyFile(self, source, destination):
-        shutil.copyfile(source, destination)
-        
-    def copyDatabases(self):
-        # copy markov database
-        srcfile = self.MARKOVDB
-        dstroot = srcfile + ".bak"
-        self.copyFile(srcfile, dstroot)
-
-        # copy seen database
-        srcfile = self.SEENDB
-        dstroot = srcfile + ".bak"
-        self.copyFile(srcfile, dstroot)
-        
     def saveDatabases(self):
-      logging.info('Saving databases')
-      self.copyDatabases()
-      self.mc.saveDatabase()
-      self.saveSeenDB()
+        logging.info('Saving databases')
+        self.createBackup(self.MARKOVDB)
+        self.mc.saveDatabase()
+
+        self.createBackup(self.SEENDB)
+        self.saveSeenDB()
 
     def handleSaveDatabasesTimer(self):
         self.saveDatabases()
@@ -257,12 +255,12 @@ class Bot:
             years = ss // 31557600
             reply = reply + ("%g years " % years)
             ss = ss - years*31557600
-            
+
         if ss > 2678400: # 31 days
             months = ss // 2678400
             reply = reply + ("%g months " % months)
             ss = ss - months*2678400
-            
+
         if ss > 604800:
             weeks = ss // 604800
             reply = reply + ("%g weeks " % weeks)
@@ -288,9 +286,13 @@ class Bot:
         reply = reply + ("%.3f seconds ago" % ss)
         return reply
 
-    def handleCommands( self, msg ):
+    def handleCommands(self, msg):
         # parse the message
         words = msg["text"].split()
+
+        # Handle messages such as "charrak?"
+        if len(words) < 1:
+            return False
 
         if words[0] == "op" and len(words) == 2:
             # Is the speaker an owner or an op?
@@ -328,7 +330,7 @@ class Bot:
             seen_msg = ""
             if self.seen.has_key(key):
                 seen_msg = nick + " was last seen in "
-                seen_msg = seen_msg + self.seen[key][0] + " " 
+                seen_msg = seen_msg + self.seen[key][0] + " "
                 last_seen = self.seen[key][1] # in seconds since epoch
                 since = self.elapsedTime( time.time() - last_seen )
                 seen_msg = seen_msg + since
@@ -343,7 +345,7 @@ class Bot:
 
     @staticmethod
     def logChannel(speaker, msg):
-      logging.debug(CYAN + speaker + PLAIN + " : " + BLUE + msg)
+        logging.debug(CYAN + speaker + PLAIN + " : " + BLUE + msg)
 
     def possiblyReply(self, msg):
         PUNCTUATION = ",./?><;:[]{}\'\"!@#$%^&*()_-+="
@@ -360,7 +362,7 @@ class Bot:
             index = random.randint(1, max_index)
             seed = (words[index-1], words[index])
             leading_words = string.join(words[0:index+1])
-    
+
         # If not, and we weren't referenced explicitly in the message, return early.
         # TODO: fix issue where this doesn't match if NICK contains one of PUNCTUATION.
         if not seed and (self.NICK.lower() not in [string.strip(word, PUNCTUATION).lower() for word in words]):
@@ -387,7 +389,7 @@ class Bot:
         conn.request("GET", "api-create.php?url=" + url)
         r1 = conn.getresponse()
         if r1.status == 200:
-            irc.send('PRIVMSG '+OWNER+' :' + r1.read() + '\r\n')        
+            irc.send('PRIVMSG '+OWNER+' :' + r1.read() + '\r\n')
         else:
             msg = 'PRIVMSG '+OWNER+' :' + 'Tinyurl problem: '
             msg += 'status=' + str(r1.status) + '\r\n'
@@ -459,7 +461,7 @@ class Bot:
             channel = str(words[1]);
             if channel[0] != '#':
                 channel = '#' + channel
-            
+
             self.logChannel(msg["speaker"], PURPLE + "JOIN " + channel)
             self.irc.send('JOIN ' + channel + '\r\n')
             return
@@ -471,7 +473,7 @@ class Bot:
 
         # if we've hit no special commands, parse this message like it was public
         self.parsePublicMessage(msg)
-        
+
     @staticmethod
     def preprocessText(text):
         # remove all color codes
@@ -482,7 +484,7 @@ class Bot:
         msg["addressing"] = ""
         words = msg["text"].split()
         if len(words) == 0:
-          return
+            return
 
         # strip off direct addressing (i.e. "jeff: go jump in a lake")
         first_word = words[0].rstrip(":,!?")
@@ -501,8 +503,6 @@ class Bot:
             # ..otherwise we're being directly addressed
             msg["p_reply"] = 1.0
 
-        return
-
     # private message from user
     # :nrrd!~jeff@bacon2.burri.to PRIVMSG gravy :foo
     # public channel message
@@ -517,29 +517,30 @@ class Bot:
         text = self.preprocessText(text)
 
         msg = {
-            "speaker"       : m.group(1) ,                 # the nick of who's speaking
-            "speaker_email" : m.group(2)+'@'+m.group(3) ,  # foo@bar.com
-            "privmsg"       : m.group(4) ,                 # should be PRIVMSG
-            "speaking_to"   : m.group(5) ,                 # could be self.NICK or a channel
-            "text"          : text ,                       # what's said
-            "p_reply"       : self.p_reply                 # probably of responding
-            }
+            "speaker"       : m.group(1) ,                # the nick of who's speaking
+            "speaker_email" : m.group(2)+'@'+m.group(3),  # foo@bar.com
+            "privmsg"       : m.group(4),                 # should be PRIVMSG
+            "speaking_to"   : m.group(5),                 # could be self.NICK or a channel
+            "text"          : text,                       # what's said
+            "p_reply"       : self.p_reply                # probably of responding
+        }
 
         if msg["privmsg"] != 'PRIVMSG':
             return
 
         if msg["speaking_to"][0] == "#":
-            nick = msg["speaker"].lower()
-            # Lock here to avoid writing to the seen database while pickling it.
-            with self.seendb_lock:
-              self.seen[nick] = [ msg["speaking_to"], time.time(), string.strip(msg["text"]) ]
- 
+          nick = msg["speaker"].lower()
+          # Lock here to avoid writing to the seen database while pickling it.
+          with self.seendb_lock:
+              self.seen[nick] = [
+                  msg["speaking_to"], time.time(), string.strip(msg["text"])]
+
         self.determineWhoIsBeingAddressed(msg)
 
-        if msg["speaking_to"] == self.NICK and msg["speaker"] in self.OWNERS: 
-            self.parsePrivateOwnerMessage( msg )
+        if msg["speaking_to"] == self.NICK and msg["speaker"] in self.OWNERS:
+            self.parsePrivateOwnerMessage(msg)
         elif msg["speaking_to"] != self.NICK:
-            self.parsePublicMessage( msg )
+            self.parsePublicMessage(msg)
 
     # information about MODE changes (ops, etc.) in channels
     def parseModeMessage(self, words):
@@ -574,7 +575,8 @@ class Bot:
             try:
                 recv = self.irc.recv(1024)
                 while len(recv) == 0:
-                    logging.warning(WARNING + "Connection closed: Trying to reconnect in 5 seconds...")
+                    logging.warning(WARNING + "Connection closed: "
+                                    "Trying to reconnect in 5 seconds...")
                     time.sleep(5)
                     self.joinIrc()
                     recv = self.irc.recv(1024)
@@ -594,10 +596,8 @@ class Bot:
 
                 if words[0]=="PING":
                     self.pong(words[1])
-
-                elif line.find('PRIVMSG')!=-1: #Call a parsing function
+                elif line.find('PRIVMSG')!=-1:  # Call a parsing function
                     self.parsePrivMessage(line)
-                    
                 elif words[1] == "MODE":
                     self.parseModeMessage(words)
 

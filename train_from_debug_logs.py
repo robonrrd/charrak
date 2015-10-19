@@ -39,7 +39,8 @@ for line in args.files:
 
     words = line.split(':')
 
-    if words[3] == 'INFO':
+    if (words[3] == 'DEBUG' or words[3] == 'INFO' or words[3] == 'WARNING' or
+        words[3] == 'ERROR'):
         continue
 
     # '20:1b:5b:39:36:6d:' nick '1b:5b:30:6d:20'
@@ -47,13 +48,12 @@ for line in args.files:
 
     if who == 'charrak':
         continue
-    
+
     color_what = ''.join(words[5:])
     what = color_what[6:len(color_what)-5]
 
     if not what.isspace() and len(what) > 0:
-            mc.addLine(what)
-
+        mc.addLine(what)
 
 mc.saveDatabase()
 

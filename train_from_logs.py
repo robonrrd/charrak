@@ -39,6 +39,6 @@ for file in files:
             if not text.isspace() and len(text) > 0:
                 mc.addLine(text)
 
-f.close()
+    f.close()
 
 mc.saveDatabase()
