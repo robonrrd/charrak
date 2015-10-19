@@ -62,7 +62,7 @@ class MarkovChain:
                     newValue = bg[ii+1][1]
 
                 with self.db_lock:
-                    if self.db.get( bg[ii] ) == None:
+                    if self.db.get(bg[ii]) == None:
                         # we've never seen this bigram
                         self.db[bg[ii]] = ([[1, newValue]], 1)
                     else:
@@ -77,7 +77,7 @@ class MarkovChain:
                         if not found:
                             val[0].append([1, bg[ii+1][1]])
 
-                        self.db[bg[ii]] = (val, val[1]+1)
+                        self.db[bg[ii]] = (val[0], val[1]+1)
 
     def saveDatabase(self):
         with self.db_lock:
