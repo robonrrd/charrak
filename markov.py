@@ -78,7 +78,6 @@ class MarkovChain:
                             val.append([1, bg[ii+1][1]])
 
                         self.db[bg[ii]] = val
-        logging.info("Database: %s" % str(self.db))
 
     def saveDatabase(self):
         with self.db_lock:
@@ -93,7 +92,6 @@ class MarkovChain:
                 return False
 
     def respond(self, bigram):
-        import pdb; pdb.set_trace()
         includeBigram = False
         # If no bigram given as a seed, pick a random one.
         if not bigram:
