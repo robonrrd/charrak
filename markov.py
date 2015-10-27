@@ -32,11 +32,13 @@ class MarkovChain:
                 with open(self.dbFilePath, 'rb') as dbfile:
                     self.db = pickle.load(dbfile)
             except IOError:
-                logging.warn(WARNING + ("Unable to read database file '%s': "
-                                        "Using empty database" % self.dbFilePath))
+                logging.warn(WARNING +
+                             ("Unable to read database file '%s': "
+                              "Using empty database" % self.dbFilePath))
             except ValueError:
-                logging.warn(WARNING + ("Database '%s' corrupt or unreadable: "
-                                        "Using empty database" % self.dbFilePath))
+                logging.warn(WARNING +
+                             ("Database '%s' corrupt or unreadable: "
+                              "Using empty database" % self.dbFilePath))
 
     def parseLineIntoSentences(self, line):
         line = re.sub('[\'/,@#<>!@#^&*]', '', line.lower())
