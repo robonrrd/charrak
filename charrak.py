@@ -30,6 +30,7 @@ parser.add_argument("--channels", help="The list of channels to join", default="
 parser.add_argument("--save_period", help="How often (in seconds) to save databases", default=300)
 parser.add_argument("--seendb", help="Path to seendb", default="./seendb.pkl")
 parser.add_argument("--markovdb", help="Path to markovdb", default="./charrakdb")
+parser.add_argument("--ignore", help="The optional list of nicks to ignor", default="")
 
 
 class Bot:
@@ -41,6 +42,7 @@ class Bot:
         self.NICK = args.nick
         self.REALNAME = args.realname
         self.OWNERS = [string.strip(owner) for owner in args.owners.split(",")]
+        self.IGNORE = [string.strip(ignore) for ignore in args.ignore.split(",")]
         self.CHANNELINIT = ["#bottest"] # 1[string.strip(channel) for channel in args.channels.split(",")]
         self.IDENT='pybot'
         self.readbuffer='' #Here we store all the messages from server
@@ -83,7 +85,7 @@ class Bot:
         set = {}
         map(set.__setitem__, seq, [])
         return set.keys()
-                                
+
     # Picks a random confused reply
     def dunno(self, msg):
         replies = [ "I dunno, $who",
@@ -186,7 +188,7 @@ class Bot:
 
     def joinChannel(self, channel):
         self.irc.send('JOIN ' + channel + '\n')
-        
+
         population = []
         operators = []
         self.eatLinesUntilEndOfNames(population, operators)
@@ -226,7 +228,7 @@ class Bot:
 
     def copyFile(self, source, destination):
         shutil.copyfile(source, destination)
-        
+
     def copyDatabases(self):
         # copy markov database
         srcfile = self.MARKOVDB
@@ -237,7 +239,7 @@ class Bot:
         srcfile = self.SEENDB
         dstroot = srcfile + ".bak"
         self.copyFile(srcfile, dstroot)
-        
+
     def saveDatabases(self):
       logging.info('Saving databases')
       self.copyDatabases()
@@ -257,12 +259,12 @@ class Bot:
             years = ss // 31557600
             reply = reply + ("%g years " % years)
             ss = ss - years*31557600
-            
+
         if ss > 2678400: # 31 days
             months = ss // 2678400
             reply = reply + ("%g months " % months)
             ss = ss - months*2678400
-            
+
         if ss > 604800:
             weeks = ss // 604800
             reply = reply + ("%g weeks " % weeks)
@@ -360,7 +362,7 @@ class Bot:
             index = random.randint(1, max_index)
             seed = (words[index-1], words[index])
             leading_words = string.join(words[0:index+1])
-    
+
         # If not, and we weren't referenced explicitly in the message, return early.
         # TODO: fix issue where this doesn't match if NICK contains one of PUNCTUATION.
         if not seed and (self.NICK.lower() not in [string.strip(word, PUNCTUATION).lower() for word in words]):
@@ -523,7 +525,7 @@ class Bot:
             "speaking_to"   : m.group(5) ,                 # could be self.NICK or a channel
             "text"          : text ,                       # what's said
             "p_reply"       : self.p_reply                 # probably of responding
-            }
+        }
 
         if msg["privmsg"] != 'PRIVMSG':
             return
@@ -533,10 +535,13 @@ class Bot:
             # Lock here to avoid writing to the seen database while pickling it.
             with self.seendb_lock:
               self.seen[nick] = [ msg["speaking_to"], time.time(), string.strip(msg["text"]) ]
- 
+
         self.determineWhoIsBeingAddressed(msg)
 
-        if msg["speaking_to"] == self.NICK and msg["speaker"] in self.OWNERS: 
+        if msg["speaker"] in self.IGNORE:
+            return
+
+        if msg["speaking_to"] == self.NICK and msg["speaker"] in self.OWNERS:
             self.parsePrivateOwnerMessage( msg )
         elif msg["speaking_to"] != self.NICK:
             self.parsePublicMessage( msg )
