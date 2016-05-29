@@ -82,6 +82,7 @@ class Bot:
     def joinIrc(self):
         self.irc = irc.Irc(self.HOST, self.PORT, self.NICK, self.IDENT, self.REALNAME)
         for c in self.CHANNELINIT:
+            self.irc.join(c)
 
     def initMarkovChain(self):
         # Open our Markov chain database        
