@@ -294,6 +294,10 @@ class Bot:
         # parse the message
         words = msg["text"].split()
 
+        # Can't be any commands in an empty message.
+        if len(words) == 0:
+            return False
+
         if words[0] == "op" and len(words) == 2:
             # Is the speaker an owner or an op?
             speaker = msg["speaker"]
@@ -491,8 +495,11 @@ class Bot:
 
         # if the person is speaking to the channel
         if msg["speaking_to"][0] == "#":
+            # see if we're being spoken to.
+            if first_word == self.NICK:
+                msg["p_reply"] = 1.0
             #..search the channel for nicks matchig this word
-            if first_word in self.who[ msg["speaking_to"] ]:
+            elif first_word in self.who[ msg["speaking_to"] ]:
                 #..and snip them out if they're found
                 msg["addressing"] = first_word
                 newline = string.join(words[1:], " ")
