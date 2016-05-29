@@ -410,6 +410,14 @@ class Bot:
             # Lock here to avoid writing to the seen database while pickling it.
             with self.seendb_lock:
               self.seen[nick] = [ msg["speaking_to"], time.time(), string.strip(msg["text"]) ]
+<<<<<<< HEAD
+||||||| merged common ancestors
+ 
+        self.determineWhoIsBeingAddressed( msg )
+=======
+
+        self.determineWhoIsBeingAddressed( msg )
+>>>>>>> whitespace
 
         self.determineWhoIsBeingAddressed(msg)
 
@@ -463,7 +471,7 @@ class Bot:
 
                 elif line.find('PRIVMSG')!=-1: #Call a parsing function
                     self.parsePrivMessage(line)
-                    
+
                 elif words[1] == "MODE":
                     self.parseModeMessage(words)
 
