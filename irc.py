@@ -49,49 +49,42 @@ class Irc(object):
                 if line.find(stopText) != -1:
                     return
 
-    def _eatLinesUntilEndOfNames(self, population, operators):
+    def _eatLinesUntilEndOfNames(self):
         # get the current population of the channel
         # :magnet.llarian.net 353 gravy = #test333 :gravy @nrrd
         # :magnet.llarian.net 366 gravy #test333 :
 
-        while 1:
+        population = []
+        operators = []
+        while True:
             temp = self.readlines()
             for line in temp:
                 logging.info(YELLOW + line)
                 words = string.rstrip(line)
                 words = string.split(words)
 
-                if(words[0] == "PING"):
+                if words[0] == 'PING':
                     self.pong(words[1])
 
-                # This is a hack, but how should I detect when we're
-                # done joining?
-                elif line.find('End of /NAMES list') != -1:
-                    return
+                elif words[1] == '366':
+                    logging.info(DBLUE + 'Done parsing population')
+                    return population, operators
 
-                elif len(words) > 4:
+                elif words[1] == '353':
+                    logging.info(DBLUE + 'Population of %s: %s',
+                                 words[4], words[5:])
                     # get the current population of the channel
-                    count = 0
-                    for ww in words:
-                        count = count + 1
-                        if ww is "=":
-                            break
-
-                    # parse nicks
-                    for ii in range(count+1, len(words)):
+                    for nick in words[5:]:
                         op = False
-                        nick = ""
-                        if words[ii][0] == "@":
+                        if nick[0] == "@":
                             op = True
-                            nick = words[ii][1:]
-                        elif words[ii][0] == ":":
-                            nick = words[ii][1:]
-                        else:
-                            nick = words[ii]
+                            nick = nick[1:]
+                        elif nick[0] == ":":
+                            nick = nick[1:]
 
-                        population.append(nick)
-                        if op is True:
-                            operators.append(nick)
+                        population += [nick]
+                        if op:
+                            operators += [nick]
 
     def join(self, channel):
         channel = str(channel)
@@ -99,11 +92,11 @@ class Irc(object):
             channel = '#' + channel
         self.send('JOIN ' + channel + '\n')
 
-        population = []
-        operators = []
-        self._eatLinesUntilEndOfNames(population, operators)
-        self._who[channel] = population
-        self._ops[channel] = operators
+        population, operators = self._eatLinesUntilEndOfNames()
+        logging.info(DGREEN + channel + ' who: ' + ','.join(population))
+        logging.info(GREEN + channel + ' ops: ' + ','.join(operators))
+        self._who[channel] = self._uniquify(population)
+        self._ops[channel] = self._uniquify(operators)
 
     def part(self, channel):
         channel = str(channel)
@@ -145,10 +138,12 @@ class Irc(object):
         return False
 
     def addop(self, chan, nick):
+        logging.info(PURPLE + ('Adding %s as op of %s' % (nick, chan)))
         self._ops[chan].append(nick)
         self._ops[chan] = self._uniquify(self._ops[chan])
 
     def rmop(self, chan, nick):
+        logging.info(PURPLE + ('Removing %s as op of %s' % (nick, chan)))
         self._ops[chan].remove(nick)
 
     # TODO: take a channel arg?
@@ -156,7 +151,7 @@ class Irc(object):
         for chan in self._who:
             for who in self._who[chan]:
                 if nick == who:
-                    logging.info(YELLOW + '+o ' + nick)
+                    logging.info(PURPLE + ('Setting +o on %s' % nick))
                     self.send('MODE ' + chan + ' +o ' + nick + '\r\n')
                     self.addop(chan, nick)
 
