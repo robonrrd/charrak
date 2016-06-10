@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-import sys
-import time
 
 ENDC = '\033[0m'
 

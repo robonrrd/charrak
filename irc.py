@@ -3,7 +3,6 @@ import logging
 import socket
 import string
 
-import logger
 from colortext import *
 
 class ConnectionClosedException(Exception):
@@ -11,7 +10,7 @@ class ConnectionClosedException(Exception):
         Exception.__init__(self, *args, **kwargs)
 
 
-class Irc:
+class Irc(object):
     def __init__(self, host, port, nick, ident, realname):
         self.readbuffer = '' # store all the messages from server
 
@@ -120,6 +119,7 @@ class Irc:
 
             self.readbuffer = self.readbuffer + recv
         except socket.error as (code, msg):
+            logging.error(RED + 'socket error: ' + msg)
             if code != errno.EINTR:
                 raise
 

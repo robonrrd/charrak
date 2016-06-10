@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import argparse
-import httplib
+# import httplib
 import logging
 import pickle
 import random
@@ -32,7 +32,7 @@ PARSER.add_argument("--markovdb", help="Path to markovdb", default="./charrakdb"
 PARSER.add_argument("--ignore", help="The optional list of nicks to ignore", default="")
 
 
-class Bot:
+class Bot(object):
     def __init__(self, args):
         # IRC settings
         self.irc = None
@@ -111,7 +111,7 @@ class Bot:
                               ("Unable to open seed db '%s' for writing" %
                                self.SEENDB))
 
-    def signalHandler(self, signal, frame):
+    def signalHandler(self, unused_signal, unused_frame):
         self.quit()
 
     def quit(self):
@@ -255,7 +255,7 @@ class Bot:
             self.irc.privmsg(msg["speaking_to"], reply)
             self.logChannel(self.NICK, reply)
 
-    @staticmethod
+    # @staticmethod
     # def makeTinyUrl(url):
     #     # make a request to tinyurl.com to translate a url.
     #     # their API is of the format:
@@ -282,7 +282,7 @@ class Bot:
 
         # If a user has issued a command, don't do anything else.
         if self.handleCommands(msg):
-          return
+            return
 
         self.possiblyReply(msg)
 
@@ -408,7 +408,8 @@ class Bot:
             nick = msg["speaker"].lower()
             # Lock here to avoid writing to the seen database while pickling it.
             with self.seendb_lock:
-              self.seen[nick] = [ msg["speaking_to"], time.time(), string.strip(msg["text"]) ]
+                self.seen[nick] = [msg["speaking_to"], time.time(),
+                                   string.strip(msg["text"])]
 
         if msg["speaker"] in self.IGNORE:
             return
