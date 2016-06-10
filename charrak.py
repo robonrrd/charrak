@@ -146,8 +146,6 @@ class Bot:
             dst = source + ".bak"
             shutil.copyfile(source, dst)
 
-
-
         # copy seen database
         srcfile = self.SEENDB
         dstroot = srcfile + ".bak"
@@ -478,16 +476,9 @@ class Bot:
 
         # Loop forever, parsing input text
         while True:
-            try:
-                recv = self.irc.recv(1024)
-                while len(recv) == 0:
-                    logging.warning(WARNING + "Connection closed: "
-                                    "Trying to reconnect in 5 seconds...")
-                    time.sleep(5)
-                    self.joinIrc()
-                    recv = self.irc.recv(1024)
+            recv = self.irc.readlines()
 
-            for line in temp:
+            for line in recv:
                 # strip whitespace and split into words
                 words = string.rstrip(line)
                 words = string.split(words)

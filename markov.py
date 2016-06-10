@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+"""Markov abstracts the markov chain and backing database."""
+
 import logging
 import math
 import os
 import random
 import re
-import sys
 
 from threading import RLock
 
@@ -45,10 +45,10 @@ class MarkovChain:
         return line.split('.!?()')
 
     def bigrams(self, sentence):
-        input = sentence.split(' ')
+        inp = sentence.split(' ')
         output = []
-        for i in range(len(input)-1):
-            output.append( (input[i], input[i+1]) )
+        for i in range(len(inp)-1):
+            output.append((inp[i], inp[i+1]))
         return output
 
     def addLine(self, line):
@@ -57,22 +57,22 @@ class MarkovChain:
             bg = self.bigrams(ss)
             for ii in range(0,len(bg)-1):
                 # if we're the last bigram, we map to EOL
-                newValue = ""
+                new_value = ""
                 if ii == len(bg)-1:
-                    newValue = "\n"
+                    new_value = "\n"
                 else:
-                    newValue = bg[ii+1][1]
+                    new_value = bg[ii+1][1]
 
                 with self.db_lock:
                     if self.db.get(bg[ii]) == None:
                         # we've never seen this bigram
-                        self.db[bg[ii]] = [[1, newValue]]
+                        self.db[bg[ii]] = [[1, new_value]]
                     else:
                         # seen it:
                         val = self.db[bg[ii]]
                         found = False
                         for rr in val:
-                            if rr[1] == newValue:
+                            if rr[1] == new_value:
                                 rr[0] = rr[0] + 1
                                 found = True
                                 break
@@ -94,12 +94,12 @@ class MarkovChain:
                 return False
 
     def respond(self, bigram):
-        includeBigram = False
+        include_bigram = False
         # If no bigram given as a seed, pick a random one.
         if not bigram:
             with self.db_lock:
                 bigram = random.choice(self.db.keys())
-                includeBigram = True
+                include_bigram = True
                 logging.info(BLUE + "Picking " + str(bigram) + " as seed")
 
         # Must be a bigram
@@ -110,13 +110,12 @@ class MarkovChain:
 
         response = [""]
         self._respondHelper(bigram, response)
-        if includeBigram:
+        if include_bigram:
             response[0] = bigram[0] + " " + bigram[1] + " " + response[0]
         return response[0]
 
     def _respondHelper(self, bigram, response):
         # does it exist in our cache?
-<<<<<<< HEAD
         with self.db_lock:
             if self.db.get(bigram) == None:
                 # end?
@@ -127,33 +126,22 @@ class MarkovChain:
                 ii = 0
                 for k, v in self.cache.iteritems():
                   if ii == which:
-=======
-        if self.cache.get(bigram) == None:
-            # end?
-            return
-            '''
-            #  pick a random bigram?
-            which = random.random() * len(self.cache)
-            ii = 0
-            for k, v in self.cache.iteritems():
-                if ii == which:
->>>>>>> bd522ae0c43da60d7ab1da4a2c63d15e9b1dad79
                     bg = k
                     break
                   ii = ii + 1
                 '''
 
-        # pick a random response
-        values = self.db[bigram]
-        which = int(math.floor(random.random()*len(values)) + 1)
-        ii = 0
-        for v in values:
-            ii = ii + v[0]
-            if ii >= which:
-                if response[0] == "":
-                    response[0] = v[1]
-                else:
-                    response[0] = response[0] + " " + v[1]
-                newbigram = (bigram[1], v[1])
-                self._respondHelper(newbigram, response)
-                return
+            # pick a random response
+            values = self.db[bigram]
+            which = int(math.floor(random.random()*len(values)) + 1)
+            ii = 0
+            for v in values:
+                ii = ii + v[0]
+                if ii >= which:
+                    if response[0] == "":
+                        response[0] = v[1]
+                    else:
+                        response[0] = response[0] + " " + v[1]
+                    newbigram = (bigram[1], v[1])
+                    self._respondHelper(newbigram, response)
+                    return
