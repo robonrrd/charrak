@@ -14,6 +14,8 @@ argparser = argparse.ArgumentParser(description='Process debug logs.')
 argparser.add_argument('files', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
 argparser.add_argument('--before', dest='beforedate', default=datetime.date.max)
 argparser.add_argument('--after', dest='afterdate', default=datetime.date.min)
+argparser.add_argument('--db', dest='db', default='./traineddb')
+argparser.add_argument('--nick', dest='nick', default='charrak')
 args = argparser.parse_args()
 
 #
@@ -24,7 +26,7 @@ after_date = str(args.afterdate)
 before = dateutil.parser.parse(before_date)
 after = dateutil.parser.parse(after_date)
 
-mc = markov.MarkovChain("./traineddb")
+mc = markov.MarkovChain(str(args.db))
 
 for line in args.files:
     time_text = line.split(':')
@@ -39,21 +41,20 @@ for line in args.files:
 
     words = line.split(':')
 
-    if words[3] == 'INFO':
+    if (words[3] == 'INFO' or words[3] == 'WARNING' or words[3] == 'ERROR'):
         continue
 
     # '20:1b:5b:39:36:6d:' nick '1b:5b:30:6d:20'
     who = words[4][6:len(words[4])-5]
 
-    if who == 'charrak':
+    if who == str(args.nick):
         continue
-    
+
     color_what = ''.join(words[5:])
     what = color_what[6:len(color_what)-5]
 
     if not what.isspace() and len(what) > 0:
-            mc.addLine(what)
-
+        mc.addLine(what)
 
 mc.saveDatabase()
 

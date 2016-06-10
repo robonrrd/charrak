@@ -19,24 +19,26 @@ except ImportError:
 
 class MarkovChain:
     def __init__(self, dbFilePath=None):
-        self.cache = { ("","") : [] }
-        self.total = { ("","") : 1 }
-
-        self.dbFile_lock = RLock()
+        self.db = {("","") : []}
+        self.db_lock = RLock()
 
         self.dbFilePath = dbFilePath
         if not dbFilePath:
-            self.dbFilePath = os.path.join(os.path.dirname(__file__), "markovdb")
-        with self.dbFile_lock:
+            self.dbFilePath = os.path.join(os.path.dirname(__file__),
+                                           "markovdb")
+
+        with self.db_lock:
             try:
                 with open(self.dbFilePath, 'rb') as dbfile:
-                    db = pickle.load(dbfile)
-                    self.cache = db[0]
-                    self.total = db[1]
+                    self.db = pickle.load(dbfile)
             except IOError:
-                logging.warn(WARNING + "Unable to read database file '%s': Using empty database" % self.dbFilePath)
+                logging.warn(WARNING +
+                             ("Unable to read database file '%s': "
+                              "Using empty database" % self.dbFilePath))
             except ValueError:
-                logging.warn(WARNING + "Database '%s' corrupt or unreadable: Using empty database" % self.dbFilePath)
+                logging.warn(WARNING +
+                             ("Database '%s' corrupt or unreadable: "
+                              "Using empty database" % self.dbFilePath))
 
     def parseLineIntoSentences(self, line):
         line = re.sub('[\'/,@#<>!@#^&*]', '', line.lower())
@@ -61,74 +63,77 @@ class MarkovChain:
                 else:
                     newValue = bg[ii+1][1]
 
-                if self.cache.get( bg[ii] ) == None: 
-                    # we've never seen this bigram
-                    self.cache[ bg[ii] ] = [ [1, newValue] ]
-                    self.total[ bg[ii] ] = 1
-                else:
-                    # seen it:
-                    val = self.cache[ bg[ii] ]
-                    found = False
-                    for rr in val:
-                        if rr[1] == newValue:
-                            rr[0] = rr[0] + 1
-                            found = True
-                            break
-                    if not found:
-                        val.append( [1, bg[ii+1][1]] )
+                with self.db_lock:
+                    if self.db.get(bg[ii]) == None:
+                        # we've never seen this bigram
+                        self.db[bg[ii]] = [[1, newValue]]
+                    else:
+                        # seen it:
+                        val = self.db[bg[ii]]
+                        found = False
+                        for rr in val:
+                            if rr[1] == newValue:
+                                rr[0] = rr[0] + 1
+                                found = True
+                                break
+                        if not found:
+                            val.append([1, bg[ii+1][1]])
 
-                    self.cache[ bg[ii] ] = val
-                    self.total[ bg[ii] ] = self.total[ bg[ii] ] + 1
+                        self.db[bg[ii]] = val
 
     def saveDatabase(self):
-        with self.dbFile_lock:
-            db = [ self.cache, self.total ]
+        with self.db_lock:
             try:
                 with open(self.dbFilePath, 'wb') as dbfile:
-                    pickle.dump(db, dbfile)
+                    pickle.dump(self.db, dbfile)
                 return True
             except IOError:
-                logging.error(ERROR + "Failed to write Database file to '%s'\n" % self.dbFilePath)
+                logging.error(ERROR +
+                              ("Failed to write markov db to '%s'\n" %
+                               self.dbFilePath))
                 return False
 
     def respond(self, bigram):
         includeBigram = False
         # If no bigram given as a seed, pick a random one.
         if not bigram:
-            bigram = random.sample(self.cache, 1)[0]
-            includeBigram = True
-            logging.info(BLUE + "Picking " + str(bigram) + " as seed")
+            with self.db_lock:
+                bigram = random.choice(self.db.keys())
+                includeBigram = True
+                logging.info(BLUE + "Picking " + str(bigram) + " as seed")
 
         # Must be a bigram
         if len(bigram) != 2:
-            logging.error(ERROR + "Invalid bigram " + str(bigram) + " passed as seed")
+            logging.error(ERROR +
+                          ("Invalid bigram %s passed as seed" % str(bigram)))
             return ""
 
         response = [""]
         self._respondHelper(bigram, response)
         if includeBigram:
-          response[0] = bigram[0] + " " + bigram[1] + " " + response[0]
+            response[0] = bigram[0] + " " + bigram[1] + " " + response[0]
         return response[0]
 
     def _respondHelper(self, bigram, response):
         # does it exist in our cache?
-        if self.cache.get(bigram) == None: 
-            # end?
-            return
-            '''
-            #  pick a random bigram?
-            which = random.random() * len(self.cache)
-            ii = 0
-            for k, v in self.cache.iteritems():
-                if ii == which:
+        with self.db_lock:
+            if self.db.get(bigram) == None:
+                # end?
+                return
+                '''
+                #  pick a random bigram?
+                which = random.random() * len(self.cache)
+                ii = 0
+                for k, v in self.cache.iteritems():
+                  if ii == which:
                     bg = k
                     break
-                ii = ii + 1
-            '''
+                  ii = ii + 1
+                '''
 
         # pick a random response
-        which = int(math.floor(random.random()*self.total[bigram]) + 1)
-        values = self.cache[bigram]
+        values = self.db[bigram]
+        which = int(math.floor(random.random()*len(values)) + 1)
         ii = 0
         for v in values:
             ii = ii + v[0]
