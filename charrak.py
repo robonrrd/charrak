@@ -196,10 +196,10 @@ class Bot(object):
         if words[0] == '!op' and len(words) == 2:
             # Am I an op?
             if not self.irc.isop(self.NICK):
-              logging.info(YELLOW + 'not an op')
-              self.irc.privmsg(msg['speaking_to'],
-                               "I'm going to need ops to do that")
-              return False
+                logging.info(YELLOW + 'not an op')
+                self.irc.privmsg(msg['speaking_to'],
+                                 "I'm going to need ops to do that")
+                return False
 
             # Is the speaker an owner or an op?
             speaker = msg["speaker"]
