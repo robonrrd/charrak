@@ -236,6 +236,12 @@ class Bot:
             shutil.copyfile(source, dst)
 
 
+
+        # copy seen database
+        srcfile = self.SEENDB
+        dstroot = srcfile + ".bak"
+        self.copyFile(srcfile, dstroot)
+
     def saveDatabases(self):
         logging.info('Saving databases')
         self.createBackup(self.MARKOVDB)
