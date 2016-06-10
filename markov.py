@@ -17,7 +17,7 @@ except ImportError:
     import pickle
 
 
-class MarkovChain:
+class MarkovChain(object):
     def __init__(self, dbFilePath=None):
         self.db = {("","") : []}
         self.db_lock = RLock()
@@ -120,16 +120,14 @@ class MarkovChain:
             if self.db.get(bigram) == None:
                 # end?
                 return
-                '''
-                #  pick a random bigram?
-                which = random.random() * len(self.cache)
-                ii = 0
-                for k, v in self.cache.iteritems():
-                  if ii == which:
-                    bg = k
-                    break
-                  ii = ii + 1
-                '''
+                #  TODO: pick a random bigram?
+                # which = random.random() * len(self.cache)
+                # ii = 0
+                # for k, v in self.cache.iteritems():
+                #   if ii == which:
+                #     bg = k
+                #     break
+                #   ii = ii + 1
 
             # pick a random response
             values = self.db[bigram]

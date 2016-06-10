@@ -24,7 +24,9 @@ def initialize(output_dir):
 
     # log everything with level name
     # TODO: add color based on level
-    handler = logging.handlers.RotatingFileHandler(os.path.join(output_dir, "debug.log"), "w", encoding=None, delay="true", maxBytes=1*1024*1024, backupCount=5)
+    handler = logging.handlers.RotatingFileHandler(
+        os.path.join(output_dir, "debug.log"), "w", encoding=None, delay="true",
+        maxBytes=1*1024*1024, backupCount=5)
     handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(asctime)s:%(levelname)s: %(message)s" + ENDC)
     handler.setFormatter(formatter)
