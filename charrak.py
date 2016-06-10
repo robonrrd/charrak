@@ -256,19 +256,19 @@ class Bot:
             self.logChannel(self.NICK, reply)
 
     @staticmethod
-    def makeTinyUrl(url):
-        # make a request to tinyurl.com to translate a url.
-        # their API is of the format:
-        # 'http://tinyurl.com/api-create.php?url=' + url
-        conn = httplib.HTTPConnection("tinyurl.com")
-        conn.request("GET", "api-create.php?url=" + url)
-        r1 = conn.getresponse()
-        if r1.status == 200:
-            irc.send('PRIVMSG '+OWNER+' :' + r1.read() + '\r\n')
-        else:
-            msg = 'Tinyurl problem: status=' + str(r1.status)
-            self.irc.privmsg(OWNER, msg)
-        return
+    # def makeTinyUrl(url):
+    #     # make a request to tinyurl.com to translate a url.
+    #     # their API is of the format:
+    #     # 'http://tinyurl.com/api-create.php?url=' + url
+    #     conn = httplib.HTTPConnection("tinyurl.com")
+    #     conn.request("GET", "api-create.php?url=" + url)
+    #     r1 = conn.getresponse()
+    #     if r1.status == 200:
+    #         irc.send('PRIVMSG '+OWNER+' :' + r1.read() + '\r\n')
+    #     else:
+    #         msg = 'Tinyurl problem: status=' + str(r1.status)
+    #         self.irc.privmsg(OWNER, msg)
+    #     return
 
 
     def parsePublicMessage(self, msg):
@@ -289,34 +289,37 @@ class Bot:
         # add the phrase to the markov database
         self.mc.addLine(msg["text"])
 
-    def parsePrivateOwnerMessage( self, msg ):
+    def parsePrivateOwnerMessage(self, msg):
         # The owner can issue commands to the bot, via strictly
         # constructed private messages
         words = msg["text"].split()
 
-        logging.info("Received private message: '" + string.strip(msg["text"]) + "'")
+        logging.info("Received private message: '" +
+                     string.strip(msg["text"]) + "'")
 
         # simple testing
         if len(words) == 1 and words[0] == 'ping':
-            self.logChannel(msg["speaker"], GREEN + "pong")
-            self.irc.privmsg(msg["speaker"], pong)
+            self.logChannel(msg["speaker"], GREEN + 'pong')
+            self.irc.privmsg(msg["speaker"], 'pong')
             return
 
         # set internal variables
         elif len(words) == 3 and words[0] == "set":
             # set reply probability
             if words[1] == "p_reply":
-                self.logChannel(msg["speaker"], GREEN + "SET P_REPLY " + words[2])
+                self.logChannel(msg["speaker"],
+                                GREEN + "SET P_REPLY " + words[2])
                 self.p_reply = float(words[2])
                 self.irc.privmsg(msg["speaker"], str(self.p_reply))
             else:
-                self.dunno()
+                self.dunno(msg)
             return
 
         elif len(words) == 2 and words[0] == "get":
             # set reply probability
             if words[1] == "p_reply":
-                self.logChannel(msg["speaker"], GREEN + "GET P_REPLY " + str(self.p_reply))
+                self.logChannel(msg["speaker"],
+                                GREEN + "GET P_REPLY " + str(self.p_reply))
                 self.irc.privmsg(msg["speaker"], str(self.p_reply))
                 return
 
@@ -328,7 +331,7 @@ class Bot:
 
         # join a channel
         elif len(words) == 2 and words[0] == 'join':
-            channel = str(words[1]);
+            channel = str(words[1])
             if channel[0] != '#':
                 channel = '#' + channel
 
@@ -350,7 +353,7 @@ class Bot:
         text = re.sub('\x03(?:\d{1,2}(?:,\d{1,2})?)?', '', text)
         return text
 
-    def determineWhoIsBeingAddressed( self, msg ):
+    def determineWhoIsBeingAddressed(self, msg):
         msg["addressing"] = ""
         words = msg["text"].split()
         if len(words) == 0:
