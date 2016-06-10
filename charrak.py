@@ -193,7 +193,7 @@ class Bot(object):
         if len(words) < 1:
             return False
 
-        if words[0] == "op" and len(words) == 2:
+        if words[0] == '!op' and len(words) == 2:
             # Is the speaker an owner or an op?
             speaker = msg["speaker"]
             is_valid = (speaker in self.OWNERS) or self.irc.isop(speaker)
@@ -205,7 +205,7 @@ class Bot(object):
             self.irc.makeop(words[1])
             return True
 
-        if words[0] == "seen" and len(words) == 2:
+        elif words[0] == '!seen' and len(words) == 2:
             nick = words[1]
             key = nick.lower()
             seen_msg = ""
@@ -213,14 +213,18 @@ class Bot(object):
                 seen_msg = nick + " was last seen in "
                 seen_msg = seen_msg + self.seen[key][0] + " "
                 last_seen = self.seen[key][1] # in seconds since epoch
-                since = self.elapsedTime( time.time() - last_seen )
+                since = self.elapsedTime(time.time() - last_seen)
                 seen_msg = seen_msg + since
                 message = string.strip(self.seen[key][2])
-                seen_msg = seen_msg + " saying '" + message + "'"
+                seen_msg = seen_msg + ' saying "' + message + '"'
             else:
                 seen_msg = "I haven't seen " + nick + "."
             self.irc.privmsg(msg["speaking_to"], seen_msg)
             return True
+
+        elif words[0] == '!owners':
+            self.irc.privmsg(msg['speaking_to'],
+                             'I would give up my bucket for %s' % self.OWNERS)
 
         return False
 
