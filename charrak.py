@@ -224,7 +224,8 @@ class Bot(object):
 
         elif words[0] == '!owners':
             self.irc.privmsg(msg['speaking_to'],
-                             'I would give up my bucket for %s' % self.OWNERS)
+                             ('I would give up my bucket for %s' %
+                              ','.join(self.OWNERS)))
 
         return False
 
