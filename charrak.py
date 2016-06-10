@@ -102,23 +102,9 @@ class Bot:
         self.irc.send("USER %s %s bla :%s\r\n" %
                       (self.IDENT, self.HOST, self.REALNAME))
 
-        # This is a hack, but how should I detect when I've successfully joined
-        # a channel?
-        self.eatLinesUntilText('End of /MOTD command')
-
         # Join the initial channels
         for c in self.CHANNELINIT:
-            self.joinChannel(c)
-
-
-    def joinChannel(self, channel):
-        self.irc.send('JOIN ' + channel + '\n')
-
-        population = []
-        operators = []
-        self.eatLinesUntilEndOfNames(population, operators)
-        self.who[channel] = [s.strip("@") for s in population]
-        self.ops[channel] = [s.strip("@") for s in operators]
+            self.irc.join(c)
 
     def initMarkovChain(self):
         # Open our Markov chain database
