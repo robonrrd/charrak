@@ -93,14 +93,9 @@ class Bot:
         self.irc.privmsg(msg["speaking_to"], reply)
 
     # Join the IRC network
-    def joinIrc(self):
-        if self.irc:
-            self.irc.close()
-        self.irc = socket.socket()
-        self.irc.connect((self.HOST, self.PORT))
-        self.irc.send("NICK %s\r\n" % self.NICK)
-        self.irc.send("USER %s %s bla :%s\r\n" %
-                      (self.IDENT, self.HOST, self.REALNAME))
+    def joinIRC(self):
+        self.irc = irc.Irc(self.HOST, self.PORT, self.NICK, self.IDENT,
+                           self.REALNAME)
 
         # Join the initial channels
         for c in self.CHANNELINIT:
@@ -469,7 +464,7 @@ class Bot:
         logger.initialize("./")
         self.initMarkovChain()
         self.loadSeenDB()
-        self.joinIrc()
+        self.joinIRC()
 
         self.save_timer = Timer(self.SAVE_TIME, self.handleSaveDatabasesTimer)
         self.save_timer.start()
