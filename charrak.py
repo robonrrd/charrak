@@ -86,6 +86,12 @@ class Bot(object):
         # Join the initial channels
         for chan in self.CHANNELINIT:
             self.irc.join(chan)
+            if not self.irc.isop(self.NICK, chan):
+                op_reqs = [
+                    'Op me!', 'Yo, ops?',
+                    'What does a kobold have to do to get ops around here?']
+                which = random.randint(0, len(op_reqs)-1)
+                self.irc.privmsg(chan, op_reqs[which])
 
     def initMarkovChain(self):
         # Open our Markov chain database
@@ -434,7 +440,7 @@ class Bot(object):
                 return
 
         if action == "-o":
-            if self.irc.isop(channel, on_who):
+            if self.irc.isop(on_who, channel=channel):
                 self.irc.rmop(channel, on_who)
                 return
 
