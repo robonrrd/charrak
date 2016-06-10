@@ -194,12 +194,22 @@ class Bot(object):
             return False
 
         if words[0] == '!op' and len(words) == 2:
+            # Am I an op?
+            if not self.irc.isop(self.NICK):
+              logging.info(YELLOW + 'not an op')
+              self.irc.privmsg(msg['speaking_to'],
+                               "I'm going to need ops to do that")
+              return False
+
             # Is the speaker an owner or an op?
             speaker = msg["speaker"]
             is_valid = (speaker in self.OWNERS) or self.irc.isop(speaker)
 
             if not is_valid:
-                logging.info(YELLOW + speaker + " is not an op or owner")
+                logging.info(YELLOW + ('%s is not an op or owner' % speaker))
+                self.irc.privmsg(
+                    msg['speaking_to'],
+                    'No can do. %s is not an op or owner' % speaker)
                 return False
 
             self.irc.makeop(words[1])
@@ -208,17 +218,16 @@ class Bot(object):
         elif words[0] == '!seen' and len(words) == 2:
             nick = words[1]
             key = nick.lower()
-            seen_msg = ""
+            seen_msg = "I haven't seen " + nick + "."
             if self.seen.has_key(key):
-                seen_msg = nick + " was last seen in "
-                seen_msg = seen_msg + self.seen[key][0] + " "
+                seen_msg = nick + ' was last seen in '
+                seen_msg += self.seen[key][0] + ' '
                 last_seen = self.seen[key][1] # in seconds since epoch
                 since = self.elapsedTime(time.time() - last_seen)
-                seen_msg = seen_msg + since
+                seen_msg += since
                 message = string.strip(self.seen[key][2])
-                seen_msg = seen_msg + ' saying "' + message + '"'
-            else:
-                seen_msg = "I haven't seen " + nick + "."
+                seen_msg += ' saying "' + message + '"'
+
             self.irc.privmsg(msg["speaking_to"], seen_msg)
             return True
 
