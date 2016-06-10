@@ -133,11 +133,14 @@ class Irc:
         map(s.__setitem__, seq, [])
         return s.keys()
 
-    def isop(self, nick):
-        # TODO: onle check for ops in one channel.
-        for chan in self._ops:
-            if nick in self._ops[chan]:
+    def isop(self, nick, channel=None):
+        if channel:
+            if nick in self._ops[channel]:
                 return True
+        else:
+            for channel in self._ops:
+                if nick in self._ops[channel]:
+                    return True
 
         return False
 

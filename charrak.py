@@ -428,7 +428,7 @@ class Bot:
         on_who = words[4]
 
         if action == "+o":
-            if not self.irc.isop(channel, on_who):
+            if not self.irc.isop(on_who, channel=channel):
                 self.irc.addop(channel, on_who)
                 return
 
