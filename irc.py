@@ -1,3 +1,4 @@
+import errno
 import logging
 import socket
 import string
@@ -5,12 +6,17 @@ import string
 import logger
 from colortext import *
 
+class ConnectionClosedException(Exception):
+    def __init__(self, *args, **kwargs):
+        Exception.__init__(self, *args, **kwargs)
+
+
 class Irc:
     def __init__(self, host, port, nick, ident, realname):
-        self.readbuffer='' # store all the messages from server
+        self.readbuffer = '' # store all the messages from server
 
-        self.who =  {} # lists of who is in what channels
-        self.ops =  {} # lists of ops is in what channels
+        self._who = {} # lists of who is in what channels
+        self._ops = {} # lists of ops is in what channels
 
         self.irc = socket.socket()
         self.irc.connect((host, port))
@@ -36,7 +42,7 @@ class Irc:
                 words = string.split(words)
 
                 # TODO: pull this out into a method to check for pings
-                if len(words) > 0 and (words[0]=="PING"):
+                if len(words) > 0 and (words[0] == "PING"):
                     self.pong(words[1])
 
                 # This is a hack, but how should I detect when to join
@@ -56,17 +62,16 @@ class Irc:
                 words = string.rstrip(line)
                 words = string.split(words)
 
-                if(words[0]=="PING"):
+                if(words[0] == "PING"):
                     self.pong(words[1])
 
                 # This is a hack, but how should I detect when we're
                 # done joining?
-                elif line.find('End of /NAMES list')!=-1:
+                elif line.find('End of /NAMES list') != -1:
                     return
 
                 elif len(words) > 4:
                     # get the current population of the channel
-                    channel = words[4]
                     count = 0
                     for ww in words:
                         count = count + 1
@@ -85,9 +90,9 @@ class Irc:
                         else:
                             nick = words[ii]
 
-                        population.append( nick )
+                        population.append(nick)
                         if op is True:
-                            operators.append( nick )
+                            operators.append(nick)
 
     def join(self, channel):
         channel = str(channel)
@@ -98,8 +103,8 @@ class Irc:
         population = []
         operators = []
         self._eatLinesUntilEndOfNames(population, operators)
-        self.who[channel] = population
-        self.ops[channel] = operators
+        self._who[channel] = population
+        self._ops[channel] = operators
 
     def part(self, channel):
         channel = str(channel)
@@ -110,11 +115,8 @@ class Irc:
     def readlines(self):
         try:
             recv = self.irc.recv(1024)
-            while len(recv) == 0:
-                logging.warning(WARNING + "Connection closed: Trying to reconnect in 5 seconds...")
-                time.sleep(5)
-                self.joinIrc()
-                recv = self.irc.recv(1024)
+            if len(recv) == 0:
+                raise ConnectionClosedException()
 
             self.readbuffer = self.readbuffer + recv
         except socket.error as (code, msg):
@@ -124,6 +126,39 @@ class Irc:
         temp = string.split(self.readbuffer, "\n")
         self.readbuffer = temp.pop()
         return temp
+
+    def _uniquify(self, seq):
+        # not order preserving
+        s = {}
+        map(s.__setitem__, seq, [])
+        return s.keys()
+
+    def isop(self, nick, channel=None):
+        if channel:
+            if nick in self._ops[channel]:
+                return True
+        else:
+            for channel in self._ops:
+                if nick in self._ops[channel]:
+                    return True
+
+        return False
+
+    def addop(self, chan, nick):
+        self._ops[chan].append(nick)
+        self._ops[chan] = self._uniquify(self._ops[chan])
+
+    def rmop(self, chan, nick):
+        self._ops[chan].remove(nick)
+
+    # TODO: take a channel arg?
+    def makeop(self, nick):
+        for chan in self._who:
+            for who in self._who[chan]:
+                if nick == who:
+                    logging.info(YELLOW + '+o ' + nick)
+                    self.send('MODE ' + chan + ' +o ' + nick + '\r\n')
+                    self.addop(chan, nick)
 
     # Irc communication functions
     def privmsg(self, speaking_to, text):
