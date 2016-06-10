@@ -311,7 +311,7 @@ class Bot:
         conn.request("GET", "api-create.php?url=" + url)
         r1 = conn.getresponse()
         if r1.status == 200:
-            irc.send('PRIVMSG '+OWNER+' :' + r1.read() + '\r\n')        
+            irc.send('PRIVMSG '+OWNER+' :' + r1.read() + '\r\n')
         else:
             msg = 'Tinyurl problem: status=' + str(r1.status)
             self.irc.privmsg(OWNER, msg)
@@ -449,13 +449,10 @@ class Bot:
             return
 
         if msg["speaking_to"][0] == "#":
-          nick = msg["speaker"].lower()
-          # Lock here to avoid writing to the seen database while pickling it.
-          with self.seendb_lock:
-              self.seen[nick] = [
-                  msg["speaking_to"], time.time(), string.strip(msg["text"])]
-
-        self.determineWhoIsBeingAddressed(msg)
+            nick = msg["speaker"].lower()
+            # Lock here to avoid writing to the seen database while pickling it.
+            with self.seendb_lock:
+              self.seen[nick] = [ msg["speaking_to"], time.time(), string.strip(msg["text"]) ]
 
         if msg["speaker"] in self.IGNORE:
             return
