@@ -19,17 +19,17 @@ import logger
 import markov
 from colortext import *
 
-parser = argparse.ArgumentParser(description='A snarky IRC bot.')
-parser.add_argument("--host", help="The server to connect to", default="irc.perl.org")
-parser.add_argument("--port", type=int, help="The connection port", default=6667)
-parser.add_argument("--nick", help="The bot's nickname", default="charrak")
-parser.add_argument("--realname", help="The bot's real name", default="charrak the kobold")
-parser.add_argument("--owners", help="The list of owner nicks", default="nrrd, nrrd_, mrdo")
-parser.add_argument("--channels", help="The list of channels to join", default="#haplessvictims")
-parser.add_argument("--save_period", help="How often (in seconds) to save databases", default=300)
-parser.add_argument("--seendb", help="Path to seendb", default="./seendb.pkl")
-parser.add_argument("--markovdb", help="Path to markovdb", default="./charrakdb")
-parser.add_argument("--ignore", help="The optional list of nicks to ignore", default="")
+PARSER = argparse.ArgumentParser(description='A snarky IRC bot.')
+PARSER.add_argument("--host", help="The server to connect to", default="irc.perl.org")
+PARSER.add_argument("--port", type=int, help="The connection port", default=6667)
+PARSER.add_argument("--nick", help="The bot's nickname", default="charrak")
+PARSER.add_argument("--realname", help="The bot's real name", default="charrak the kobold")
+PARSER.add_argument("--owners", help="The list of owner nicks", default="nrrd, nrrd_, mrdo, mrdo_")
+PARSER.add_argument("--channels", help="The list of channels to join", default="#haplessvictims")
+PARSER.add_argument("--save_period", help="How often (in seconds) to save databases", default=300)
+PARSER.add_argument("--seendb", help="Path to seendb", default="./seendb.pkl")
+PARSER.add_argument("--markovdb", help="Path to markovdb", default="./charrakdb")
+PARSER.add_argument("--ignore", help="The optional list of nicks to ignore", default="")
 
 
 class Bot:
@@ -66,20 +66,6 @@ class Bot:
         signal.signal(signal.SIGTERM, self.signalHandler)
         signal.signal(signal.SIGQUIT, self.signalHandler)
 
-    # Irc communication functions
-    def privmsg(self, speaking_to, text):
-        logging.debug(PURPLE + speaking_to + PLAIN + " : " + BLUE + text)
-        self.irc.send('PRIVMSG '+ speaking_to +' :' + text + '\r\n')
-
-    def pong(self, server):
-        self.irc.send("PONG %s\r\n" % server)
-
-    def uniquify(self, seq):
-        # not order preserving
-        set = {}
-        map(set.__setitem__, seq, [])
-        return set.keys()
-
     # Picks a random confused reply
     def dunno(self, msg):
         replies = ["I dunno, $who",
@@ -88,8 +74,8 @@ class Bot:
                    "I don't understand.",
                    "You're confusing, $who."]
 
-        which = random.randint(0 , len(replies)-1)
-        reply = re.sub( "$who", msg["speaker"], replies[which] )
+        which = random.randint(0, len(replies)-1)
+        reply = re.sub("$who", msg["speaker"], replies[which])
         self.irc.privmsg(msg["speaking_to"], reply)
 
     # Join the IRC network
@@ -98,8 +84,8 @@ class Bot:
                            self.REALNAME)
 
         # Join the initial channels
-        for c in self.CHANNELINIT:
-            self.irc.join(c)
+        for chan in self.CHANNELINIT:
+            self.irc.join(chan)
 
     def initMarkovChain(self):
         # Open our Markov chain database
@@ -140,11 +126,6 @@ class Bot:
         if os.path.isfile(source):
             dst = source + ".bak"
             shutil.copyfile(source, dst)
-
-        # copy seen database
-        srcfile = self.SEENDB
-        dstroot = srcfile + ".bak"
-        self.copyFile(srcfile, dstroot)
 
     def saveDatabases(self):
         logging.info('Saving databases')
@@ -209,20 +190,13 @@ class Bot:
         if words[0] == "op" and len(words) == 2:
             # Is the speaker an owner or an op?
             speaker = msg["speaker"]
-            isValid = (speaker in self.OWNERS) or self.irc.isop(speaker)
+            is_valid = (speaker in self.OWNERS) or self.irc.isop(speaker)
 
-            if not isValid:
+            if not is_valid:
                 logging.info(YELLOW + speaker + " is not an op or owner")
                 return False
 
-            # step through all channels we're in and op the named user when
-            # we see her
-            for chan in self.who:
-                for nick in self.who[chan]:
-                    if words[1] == nick:
-                        logging.info(YELLOW + "+o " + nick)
-                        self.irc.send('MODE '+ chan +' +o ' + nick + '\r\n')
-                        self.irc.addop(chan, nick)
+            self.irc.makeop(words[1])
             return True
 
         if words[0] == "seen" and len(words) == 2:
@@ -451,13 +425,13 @@ class Bot:
         on_who = words[4]
 
         if action == "+o":
-            if on_who not in self.irc.ops[channel]:
-                self.irc.ops[channel].append(on_who)
+            if not self.irc.isop(channel, on_who):
+                self.irc.addop(channel, on_who)
                 return
 
         if action == "-o":
-            if on_who in self.irc.ops[channel]:
-                self.irc.ops[channel].remove(on_who)
+            if self.irc.isop(channel, on_who):
+                self.irc.rmop(channel, on_who)
                 return
 
     def main(self):
@@ -471,7 +445,13 @@ class Bot:
 
         # Loop forever, parsing input text
         while True:
-            recv = self.irc.readlines()
+            try:
+                recv = self.irc.readlines()
+            except irc.ConnectionClosedException:
+                logging.warning(WARNING + "Connection closed: Trying to reconnect in 5 seconds...")
+                time.sleep(5)
+                self.joinIRC()
+                continue
 
             for line in recv:
                 # strip whitespace and split into words
@@ -488,5 +468,5 @@ class Bot:
 #####
 
 if __name__ == "__main__":
-    bot = Bot(parser.parse_args())
+    bot = Bot(PARSER.parse_args())
     bot.main()
