@@ -116,6 +116,7 @@ class MarkovChain:
 
     def _respondHelper(self, bigram, response):
         # does it exist in our cache?
+<<<<<<< HEAD
         with self.db_lock:
             if self.db.get(bigram) == None:
                 # end?
@@ -126,6 +127,17 @@ class MarkovChain:
                 ii = 0
                 for k, v in self.cache.iteritems():
                   if ii == which:
+=======
+        if self.cache.get(bigram) == None:
+            # end?
+            return
+            '''
+            #  pick a random bigram?
+            which = random.random() * len(self.cache)
+            ii = 0
+            for k, v in self.cache.iteritems():
+                if ii == which:
+>>>>>>> bd522ae0c43da60d7ab1da4a2c63d15e9b1dad79
                     bg = k
                     break
                   ii = ii + 1
