@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 import argparse
-import errno
 import httplib
 import logging
 import pickle
 import random
 import re
 import sys
-import socket
 import string
 import signal
 import time
@@ -16,6 +14,7 @@ import shutil
 
 from threading import Timer, RLock
 
+import irc
 import logger
 import markov
 from colortext import *
@@ -42,15 +41,11 @@ class Bot:
         self.NICK = args.nick
         self.REALNAME = args.realname
         self.OWNERS = [string.strip(owner) for owner in args.owners.split(",")]
-        self.CHANNELINIT = [string.strip(channel) for channel in
-                            args.channels.split(",")]
+        self.IGNORE = [string.strip(ignore) for ignore in args.ignore.split(",")]
+        self.CHANNELINIT = [string.strip(channel) for channel in args.channels.split(",")]
         self.IDENT='pybot'
-        self.readbuffer='' #Here we store all the messages from server
 
         # Caches of IRC status
-        # TODO: use dicts of sets instead of dicts of lists here
-        self.who =  {} # lists of who is in what channels
-        self.ops =  {} # lists of ops is in what channels
         self.seen = {} # lists of who said what when
 
         # Markov chain settings
@@ -95,77 +90,7 @@ class Bot:
 
         which = random.randint(0 , len(replies)-1)
         reply = re.sub( "$who", msg["speaker"], replies[which] )
-        #self.irc.send('PRIVMSG '+ msg["speaking_to"] +' :' + reply + '\r\n')
-        self.privmsg(msg["speaking_to"], reply)
-
-    def eatLinesUntilText(self, stopText):
-        # Loop until we encounter the passed in 'stopText'
-        while 1:
-            self.readbuffer = self.readbuffer + self.irc.recv(1024)
-            temp = string.split(self.readbuffer, "\n")
-            self.readbuffer = temp.pop( )
-
-            for line in temp:
-                logging.info(YELLOW + line)
-                words = string.rstrip(line)
-                words = string.split(words)
-
-                if len(words) > 0 and (words[0]=="PING"):
-                    self.pong(words[1])
-
-                # This is a hack, but how should I detect when to join
-                # a channel?
-                if line.find(stopText) != -1:
-                    return
-
-    def eatLinesUntilEndOfNames(self, population, operators):
-        # Get the current population of the channel
-        # The server response will look like ('gravy' is the bot's name here):
-        # :magnet.llarian.net 353 gravy = #test333 :gravy @nrrd
-        # :magnet.llarian.net 366 gravy #test333 :
-
-        while True:
-            self.readbuffer = self.readbuffer + self.irc.recv(1024)
-            temp = string.split(self.readbuffer, "\n")
-            self.readbuffer = temp.pop( )
-            for line in temp:
-                logging.info(YELLOW + line)
-                words = string.rstrip(line)
-                words = string.split(words)
-
-                if(words[0]=="PING"):
-                    self.pong(words[1])
-
-                # This is a hack, but how should I detect when we're
-                # done joining?
-                elif line.find('End of /NAMES list')!=-1:
-                    return
-
-                elif len(words) > 4:
-                    # get the current population of the channel
-                    channel = words[4]
-                    count = 0
-                    for ww in words:
-                        count = count + 1
-                        if ww is "=":
-                            break
-
-                    # parse nicks
-                    for ii in range(count+1, len(words)):
-                        op = False
-                        nick = ""
-                        if words[ii][0] == "@":
-                            op = True
-                            nick = words[ii][1:]
-                        elif words[ii][0] == ":":
-                            nick = words[ii][1:]
-                        else:
-                            nick = words[ii]
-
-                        population.append( nick )
-                        if op is True:
-                            operators.append( nick )
-
+        self.irc.privmsg(msg["speaking_to"], reply)
 
     # Join the IRC network
     def joinIrc(self):
@@ -226,7 +151,7 @@ class Bot:
         if self.save_timer:
             self.save_timer.cancel()
         self.saveDatabases()
-        self.irc.close()
+        self.irc = None
         sys.exit(0)
 
     @staticmethod
@@ -305,14 +230,7 @@ class Bot:
         if words[0] == "op" and len(words) == 2:
             # Is the speaker an owner or an op?
             speaker = msg["speaker"]
-            isValid = False
-            if speaker in self.OWNERS:
-                isValid = True
-            else:
-                for chan in self.who:
-                    if speaker in self.ops[ chan ]:
-                        isValid = True
-                        break
+            isValid = (speaker in self.OWNERS) or self.irc.isop(speaker)
 
             if not isValid:
                 logging.info(YELLOW + speaker + " is not an op or owner")
@@ -325,11 +243,7 @@ class Bot:
                     if words[1] == nick:
                         logging.info(YELLOW + "+o " + nick)
                         self.irc.send('MODE '+ chan +' +o ' + nick + '\r\n')
-                        self.ops[ chan ].append(nick)
-
-                        # make our list of ops unique
-                        self.ops[ chan] = self.uniquify(self.ops[ chan ])
-
+                        self.irc.addop(chan, nick)
             return True
 
         if words[0] == "seen" and len(words) == 2:
@@ -346,7 +260,7 @@ class Bot:
                 seen_msg = seen_msg + " saying '" + message + "'"
             else:
                 seen_msg = "I haven't seen " + nick + "."
-            self.privmsg(msg["speaking_to"], seen_msg)
+            self.irc.privmsg(msg["speaking_to"], seen_msg)
             return True
 
         return False
@@ -385,7 +299,7 @@ class Bot:
         if len(response) == 0:
             self.logChannel(self.NICK, "EMPTY_REPLY")
         else:
-            self.privmsg(msg["speaking_to"], reply)
+            self.irc.privmsg(msg["speaking_to"], reply)
             self.logChannel(self.NICK, reply)
 
     @staticmethod
@@ -397,11 +311,10 @@ class Bot:
         conn.request("GET", "api-create.php?url=" + url)
         r1 = conn.getresponse()
         if r1.status == 200:
-            irc.send('PRIVMSG '+OWNER+' :' + r1.read() + '\r\n')
+            irc.send('PRIVMSG '+OWNER+' :' + r1.read() + '\r\n')        
         else:
-            msg = 'PRIVMSG '+OWNER+' :' + 'Tinyurl problem: '
-            msg += 'status=' + str(r1.status) + '\r\n'
-            irc.send(msg)
+            msg = 'Tinyurl problem: status=' + str(r1.status)
+            self.irc.privmsg(OWNER, msg)
         return
 
 
@@ -433,7 +346,7 @@ class Bot:
         # simple testing
         if len(words) == 1 and words[0] == 'ping':
             self.logChannel(msg["speaker"], GREEN + "pong")
-            self.irc.send('PRIVMSG '+ msg["speaker"] +' :' + 'pong\r\n')
+            self.irc.privmsg(msg["speaker"], pong)
             return
 
         # set internal variables
@@ -442,7 +355,7 @@ class Bot:
             if words[1] == "p_reply":
                 self.logChannel(msg["speaker"], GREEN + "SET P_REPLY " + words[2])
                 self.p_reply = float(words[2])
-                self.irc.send('PRIVMSG '+ msg["speaker"] +' :' + str(self.p_reply) + '\r\n')
+                self.irc.privmsg(msg["speaker"], str(self.p_reply))
             else:
                 self.dunno()
             return
@@ -451,17 +364,13 @@ class Bot:
             # set reply probability
             if words[1] == "p_reply":
                 self.logChannel(msg["speaker"], GREEN + "GET P_REPLY " + str(self.p_reply))
-                self.irc.send('PRIVMSG '+ msg["speaker"] +' :' + str(self.p_reply) + '\r\n')
+                self.irc.privmsg(msg["speaker"], str(self.p_reply))
                 return
 
         # leave a channel
-        elif len(words) == 2 and words[0] == 'leave':
-            channel = str(words[1]);
-            if channel[0] != '#':
-                channel = '#' + channel
-
-            self.logChannel(msg["speaker"], PURPLE + "PART " + channel)
-            self.irc.send('PART ' + channel + '\r\n')
+        elif len(words) == 2 and (words[0] == 'leave' or words[0] == 'part'):
+            self.logChannel(msg["speaker"], PURPLE + "PART " + words[1])
+            self.irc.part(words[1])
             return
 
         # join a channel
@@ -503,7 +412,7 @@ class Bot:
             if first_word == self.NICK:
                 msg["p_reply"] = 1.0
             #..search the channel for nicks matchig this word
-            elif first_word in self.who[ msg["speaking_to"] ]:
+            elif first_word in self.irc.who[msg["speaking_to"]]:
                 #..and snip them out if they're found
                 msg["addressing"] = first_word
                 newline = string.join(words[1:], " ")
@@ -566,13 +475,13 @@ class Bot:
         on_who = words[4]
 
         if action == "+o":
-            if on_who not in self.ops[channel]:
-                self.ops[channel].append(on_who)
+            if on_who not in self.irc.ops[channel]:
+                self.irc.ops[channel].append(on_who)
                 return
 
         if action == "-o":
-            if on_who in self.ops[channel]:
-                self.ops[channel].remove(on_who)
+            if on_who in self.irc.ops[channel]:
+                self.irc.ops[channel].remove(on_who)
                 return
 
     def main(self):
@@ -595,26 +504,17 @@ class Bot:
                     self.joinIrc()
                     recv = self.irc.recv(1024)
 
-                self.readbuffer = self.readbuffer + recv
-            except socket.error as (code, msg):
-                if code != errno.EINTR:
-                    raise
-
-            temp = string.split(self.readbuffer, "\n")
-            self.readbuffer = temp.pop( )
-
             for line in temp:
                 # strip whitespace and split into words
                 words = string.rstrip(line)
                 words = string.split(words)
 
                 if words[0]=="PING":
-                    self.pong(words[1])
+                    self.irc.pong(words[1])
                 elif line.find('PRIVMSG')!=-1:  # Call a parsing function
                     self.parsePrivMessage(line)
                 elif words[1] == "MODE":
                     self.parseModeMessage(words)
-
 
 #####
 
