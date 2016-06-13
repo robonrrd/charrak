@@ -66,6 +66,14 @@ class Bot(object):
         signal.signal(signal.SIGTERM, self.signalHandler)
         signal.signal(signal.SIGQUIT, self.signalHandler)
 
+        # command registration
+        self._commands = {
+            '!seen': (self._cmd_seen, 'When I last saw someone.'),
+            '!op': (self._cmd_op, 'Give someone ops.'),
+            '!owners': (self._cmd_owners, 'Tell you who my owners are.'),
+            '!help': (self._cmd_help, 'Get some help. No, seriously.'),
+        }
+
     # Picks a random confused reply
     def dunno(self, msg):
         replies = ["I dunno, $who",
@@ -185,6 +193,66 @@ class Bot(object):
         reply = reply + ("%.3f seconds ago" % ss)
         return reply
 
+    def _cmd_seen(self, speaker, speaking_to, words):
+        if len(words) != 2:
+            return self._cmd_help(speaker, speaking_to, ['!help', 'seen'])
+
+        nick = words[1]
+        key = nick.lower()
+        seen_msg = "I haven't seen " + nick + "."
+        if self.seen.has_key(key):
+            seen_msg = nick + ' was last seen in '
+            seen_msg += self.seen[key][0] + ' '
+            last_seen = self.seen[key][1] # in seconds since epoch
+            since = self.elapsedTime(time.time() - last_seen)
+            seen_msg += since
+            message = string.strip(self.seen[key][2])
+            seen_msg += ' saying "' + message + '"'
+
+        self.irc.privmsg(speaking_to, seen_msg)
+        return True
+
+    def _cmd_op(self, speaker, speaking_to, words):
+        if len(words) != 2:
+            return self._cmd_help(speaker, speaking_to, ['!help', 'op'])
+
+        # Am I an op?
+        if not self.irc.isop(self.NICK):
+            logging.info(YELLOW + 'not an op')
+            self.irc.privmsg(speaking_to, "I'm going to need ops to do that")
+            return False
+
+        # Is the speaker an owner or an op?
+        is_valid = (speaker in self.OWNERS) or self.irc.isop(speaker)
+
+        if not is_valid:
+            logging.info(YELLOW + ('%s is not an op or owner' % speaker))
+            self.irc.privmsg(speaking_to,
+                             'No can do. %s is not an op or owner' % speaker)
+            return False
+
+        self.irc.makeop(words[1])
+        return True
+
+    def _cmd_owners(self, speaker, speaking_to, words):
+        if len(words) != 1:
+            return self._cmd_help(speaker, speaking_to, ['!help', 'owners'])
+        self.irc.privmsg(speaking_to, ('I would give up my bucket for %s' %
+                                       ','.join(self.OWNERS)))
+
+    def _cmd_help(self, speaker, speaking_to, words):
+        if len(words) == 1:
+            self.irc.privmsg(speaking_to,
+                             ('I know the following commands: %s. '
+                              'Try \'!help <command>\' to find out more.' %
+                              ','.join(list(self._commands))))
+            return True
+        elif words[1] in self._commands:
+            self.irc.privmsg(speaking_to, self._commands[words[1]][1])
+            return True
+
+        return False
+
     def handleCommands(self, msg):
         # parse the message
         words = msg["text"].split()
@@ -193,48 +261,9 @@ class Bot(object):
         if len(words) < 1:
             return False
 
-        if words[0] == '!op' and len(words) == 2:
-            # Am I an op?
-            if not self.irc.isop(self.NICK):
-                logging.info(YELLOW + 'not an op')
-                self.irc.privmsg(msg['speaking_to'],
-                                 "I'm going to need ops to do that")
-                return False
-
-            # Is the speaker an owner or an op?
-            speaker = msg["speaker"]
-            is_valid = (speaker in self.OWNERS) or self.irc.isop(speaker)
-
-            if not is_valid:
-                logging.info(YELLOW + ('%s is not an op or owner' % speaker))
-                self.irc.privmsg(
-                    msg['speaking_to'],
-                    'No can do. %s is not an op or owner' % speaker)
-                return False
-
-            self.irc.makeop(words[1])
-            return True
-
-        elif words[0] == '!seen' and len(words) == 2:
-            nick = words[1]
-            key = nick.lower()
-            seen_msg = "I haven't seen " + nick + "."
-            if self.seen.has_key(key):
-                seen_msg = nick + ' was last seen in '
-                seen_msg += self.seen[key][0] + ' '
-                last_seen = self.seen[key][1] # in seconds since epoch
-                since = self.elapsedTime(time.time() - last_seen)
-                seen_msg += since
-                message = string.strip(self.seen[key][2])
-                seen_msg += ' saying "' + message + '"'
-
-            self.irc.privmsg(msg["speaking_to"], seen_msg)
-            return True
-
-        elif words[0] == '!owners':
-            self.irc.privmsg(msg['speaking_to'],
-                             ('I would give up my bucket for %s' %
-                              ','.join(self.OWNERS)))
+        if words[0] in self._commands:
+            cmd = self._commands[words[0]][0]
+            return cmd(msg['speaker'], msg['speaking_to'], words)
 
         return False
 
