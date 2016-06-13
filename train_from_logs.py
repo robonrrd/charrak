@@ -1,19 +1,18 @@
 #!/usr/bin/env python
 import sys
-import re
 import markov
 import string
 
 
-files = sys.argv[1:]
-if not files:
-    files = ["/dev/stdin"]
+FILES = sys.argv[1:]
+if not FILES:
+    FILES = ["/dev/stdin"]
 
 
-mc = markov.MarkovChain("./traineddb")
+MC = markov.MarkovChain("./traineddb")
 
-for file in files:
-    f = open(file)
+for fi in FILES:
+    f = open(fi)
 
     for line in f:
         words = line.split()
@@ -26,7 +25,7 @@ for file in files:
                 cr_index = line.find("\r")
                 line = line[cr_index+1:]
 
-            line = filter(string.printable.__contains__,line)
+            line = filter(string.printable.__contains__, line)
             words = line.split()
 
         if len(words) > 3:
@@ -37,8 +36,8 @@ for file in files:
             text = " ".join(words[3:])
             text = text.lstrip()
             if not text.isspace() and len(text) > 0:
-                mc.addLine(text)
+                MC.addLine(text)
 
     f.close()
 
-mc.saveDatabase()
+MC.saveDatabase()
