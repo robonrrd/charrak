@@ -19,7 +19,8 @@ except ImportError:
 
 class MarkovChain(object):
     def __init__(self, dbFilePath=None):
-        self.db = {("","") : []}
+        #self.db = {("","") : []}
+        self.db = {}
         self.db_lock = RLock()
 
         self.dbFilePath = dbFilePath
@@ -131,7 +132,13 @@ class MarkovChain(object):
 
             # pick a random response
             values = self.db[bigram]
-            which = int(math.floor(random.random()*len(values)) + 1)
+            
+            # find sum of all response appearance counts
+            totalAppear = 0
+            for v in values:
+                totalAppear = totalAppear + v[0]
+
+            which = int(math.floor(random.random()*totalAppear) + 1)
             ii = 0
             for v in values:
                 ii = ii + v[0]
