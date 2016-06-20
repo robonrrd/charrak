@@ -4,6 +4,7 @@ import markov
 import argparse
 import datetime
 import dateutil
+import dateutil.parser
 
 #
 
