@@ -128,8 +128,7 @@ class Irc(object):
 
     def isop(self, nick, channel=None):
         if channel:
-            if nick in self._ops[channel]:
-                return True
+            return nick in self._ops[channel]
         else:
             for channel in self._ops:
                 if nick in self._ops[channel]:
@@ -138,13 +137,38 @@ class Irc(object):
         return False
 
     def addop(self, chan, nick):
+        if self.isop(nick, channel=chan):
+            return
         logging.info(PURPLE + ('Adding %s as op of %s' % (nick, chan)))
         self._ops[chan].append(nick)
-        self._ops[chan] = self._uniquify(self._ops[chan])
 
     def rmop(self, chan, nick):
+        if not self.isop(nick, channel=chan):
+            return
         logging.info(PURPLE + ('Removing %s as op of %s' % (nick, chan)))
         self._ops[chan].remove(nick)
+
+    def iswho(self, nick, channel=None):
+        if channel:
+            return nick in self._who[channel]
+        else:
+            for channel in self._who:
+                if nick in self._who[channel]:
+                    return True
+
+        return False
+
+    def addwho(self, chan, nick):
+        if self.iswho(nick, channel=chan):
+            return
+        logging.info(CYAN + ('Adding %s in %s' % (nick, chan)))
+        self._who[chan].append(nick)
+
+    def rmwho(self, chan, nick):
+        if not self.iswho(nick, channel=chan):
+            return
+        logging.info(CYAN + ('Removing %s from %s' % (nick, chan)))
+        self._who[chan].remove(nick)
 
     # TODO: take a channel arg?
     def makeop(self, nick):
