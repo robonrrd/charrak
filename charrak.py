@@ -432,6 +432,7 @@ class Bot(object):
     # :nrrd!~jeff@bacon2.burri.to PRIVMSG gravy :foo
     # public channel message
     # :nrrd!~jeff@bacon2.burri.to PRIVMSG #test333 :foo
+    # TODO: take 'words' instead to simplify parsing.
     def parsePrivMessage(self, line):
         # ignore any line with a url in it
         m = re.search('^:(\w*)!.(\w*)@(\S*)\s(\S*)\s(\S*) :(.*)', line)
@@ -478,14 +479,27 @@ class Bot(object):
         on_who = words[4]
 
         if action == "+o":
-            if not self.irc.isop(on_who, channel=channel):
-                self.irc.addop(channel, on_who)
-                return
+            self.irc.addop(channel, on_who)
+            return
 
         if action == "-o":
-            if self.irc.isop(on_who, channel=channel):
-                self.irc.rmop(channel, on_who)
-                return
+            self.irc.rmop(channel, on_who)
+            return
+
+    # update who list when users part or join.
+    def handlePartJoin(self, words):
+        m = re.search('^:(\w*)!', words[0])
+        if m is None:
+            return
+
+        user = m.group(1)
+        channel = words[2]
+
+        if words[1] == 'PART':
+            self.irc.rmwho(channel, user)
+        elif words[1] == 'JOIN':
+            # strip the leading ':'
+            self.irc.addwho(channel[1:], user)
 
     def main(self):
         logger.initialize("./")
@@ -507,16 +521,19 @@ class Bot(object):
                 continue
 
             for line in recv:
+                logging.debug(line)
                 # strip whitespace and split into words
                 words = string.rstrip(line)
                 words = string.split(words)
 
                 if words[0]=="PING":
                     self.irc.pong(words[1])
-                elif line.find('PRIVMSG')!=-1:  # Call a parsing function
+                elif words[1] == 'PRIVMSG':
                     self.parsePrivMessage(line)
                 elif words[1] == "MODE":
                     self.parseModeMessage(words)
+                elif words[1] == 'PART' or words[1] == 'JOIN':
+                    self.handlePartJoin(words)
 
 #####
 
