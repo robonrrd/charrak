@@ -30,6 +30,8 @@ PARSER.add_argument("--save_period", help="How often (in seconds) to save databa
 PARSER.add_argument("--seendb", help="Path to seendb", default="./seendb.pkl")
 PARSER.add_argument("--markovdb", help="Path to markovdb", default="./charrakdb")
 PARSER.add_argument("--ignore", help="The optional list of nicks to ignore", default="")
+PARSER.add_argument("--readonly", help="The bot will not learn from other users, only reply to them", dest='readonly', action='store_true')
+PARSER.set_defaults(readonly=False)
 
 
 class Bot(object):
@@ -44,6 +46,7 @@ class Bot(object):
         self.IGNORE = [string.strip(ignore) for ignore in args.ignore.split(",")]
         self.CHANNELINIT = [string.strip(channel) for channel in args.channels.split(",")]
         self.IDENT='pybot'
+        self.READONLY = args.readonly
 
         # Caches of IRC status
         self.seen = {} # lists of who said what when
@@ -71,6 +74,8 @@ class Bot(object):
             '!seen': (self._cmd_seen, 'When I last saw someone.'),
             '!op': (self._cmd_op, 'Give someone ops.'),
             '!owners': (self._cmd_owners, 'Tell you who my owners are.'),
+            '!ignore': (self._cmd_ignore, 'Begin ignoring someone.'),
+            '!unignore': (self._cmd_unignore, 'Stop ignoring someone.'),
             '!help': (self._cmd_help, 'Get some help. No, seriously.'),
         }
 
@@ -144,7 +149,11 @@ class Bot(object):
     def saveDatabases(self):
         logging.info('Saving databases')
         self.createBackup(self.MARKOVDB)
-        self.mc.saveDatabase()
+
+        if self.READONLY:
+            logging.info('Skipping markov db because we are read-only')
+        else:
+            self.mc.saveDatabase()
 
         self.createBackup(self.SEENDB)
         self.saveSeenDB()
@@ -239,6 +248,40 @@ class Bot(object):
             return self._cmd_help(speaker, speaking_to, ['!help', 'owners'])
         self.irc.privmsg(speaking_to, ('I would give up my bucket for %s' %
                                        ','.join(self.OWNERS)))
+
+    def _cmd_ignore(self, speaker, speaking_to, words):
+        if len(words) != 2:
+            return self._cmd_help(speaker, speaking_to, ['!help', 'ignore'])
+
+        # Is the speaker an owner or an op?
+        is_valid = (speaker in self.OWNERS) or self.irc.isop(speaker)
+
+        if not is_valid:
+            logging.info(YELLOW + ('%s is not an op or owner' % speaker))
+            self.irc.privmsg(speaking_to,
+                             'No can do. %s is not an op or owner' % speaker)
+            return False
+
+        if words[1] not in self.IGNORE:
+            self.IGNORE.append(words[1])
+        return True
+
+    def _cmd_unignore(self, speaker, speaking_to, words):
+        if len(words) != 2:
+            return self._cmd_help(speaker, speaking_to, ['!help', 'unignore'])
+
+        # Is the speaker an owner or an op?
+        is_valid = (speaker in self.OWNERS) or self.irc.isop(speaker)
+
+        if not is_valid:
+            logging.info(YELLOW + ('%s is not an op or owner' % speaker))
+            self.irc.privmsg(speaking_to,
+                             'No can do. %s is not an op or owner' % speaker)
+            return False
+
+        if words[1] in self.IGNORE:
+            self.IGNORE.remove(words[1])
+        return True
 
     def _cmd_help(self, speaker, speaking_to, words):
         if len(words) == 1:
@@ -335,8 +378,10 @@ class Bot(object):
 
         self.possiblyReply(msg)
 
-        # add the phrase to the markov database
-        self.mc.addLine(msg["text"])
+        # add the phrase to the markov database if we're NOT in
+        # readonly mode
+        if not self.READONLY:
+            self.mc.addLine(msg["text"])
 
     def parsePrivateOwnerMessage(self, msg):
         # The owner can issue commands to the bot, via strictly
